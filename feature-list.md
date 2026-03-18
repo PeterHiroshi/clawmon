@@ -10,17 +10,17 @@
 
 | # | Feature | Status | Branch | Notes |
 |---|---------|--------|--------|-------|
-| 1.1 | Project scaffolding (Cargo.toml, dir structure, Makefile) | 🔴 | — | — |
-| 1.2 | Config module (CLI args, workspace paths, port, intervals) | 🔴 | — | — |
-| 1.3 | Git collector (status, commits, ahead/behind, last push) | 🔴 | — | — |
-| 1.4 | Task collector (parse .forge-task/ meta, status, progress) | 🔴 | — | — |
-| 1.5 | Process collector (Claude Code PID detection, uptime, state) | 🔴 | — | — |
-| 1.6 | Environment collector (bootstrap health, tool availability) | 🔴 | — | — |
-| 1.7 | HTTP API server (axum, all endpoints, JSON responses) | 🔴 | — | — |
-| 1.8 | SSE event stream (real-time push to TUI) | 🔴 | — | — |
-| 1.9 | File watcher (notify crate, trigger collectors on change) | 🔴 | — | — |
-| 1.10 | Integration tests (API + collectors) | 🔴 | — | — |
-| 1.11 | E2E tests (start daemon, hit API, verify responses) | 🔴 | — | — |
+| 1.1 | Project scaffolding (Cargo.toml, dir structure, Makefile) | 🟢 | feature/phase1-daemon | Cargo.toml, src/ structure, error types |
+| 1.2 | Config module (CLI args, workspace paths, port, intervals) | 🟢 | feature/phase1-daemon | clap CLI, workspace auto-detect, project scanning |
+| 1.3 | Git collector (status, commits, ahead/behind, last push) | 🟢 | feature/phase1-daemon | git2 native ops, 6 unit tests |
+| 1.4 | Task collector (parse .forge-task/ meta, status, progress) | 🟢 | feature/phase1-daemon | task-spec.json, meta.json, progress.md parsing |
+| 1.5 | Process collector (Claude Code PID detection, uptime, state) | 🟢 | feature/phase1-daemon | /proc + ps fallback, stall detection |
+| 1.6 | Environment collector (bootstrap health, tool availability) | 🟢 | feature/phase1-daemon | 9 tools, hooks, superpowers check |
+| 1.7 | HTTP API server (axum, all endpoints, JSON responses) | 🟢 | feature/phase1-daemon | All 7 endpoints + SSE |
+| 1.8 | SSE event stream (real-time push to TUI) | 🟢 | feature/phase1-daemon | broadcast channel, tokio-stream |
+| 1.9 | File watcher (notify crate, trigger collectors on change) | 🟢 | feature/phase1-daemon | notify v7, filtered events |
+| 1.10 | Integration tests (API + collectors) | 🟢 | feature/phase1-daemon | 8 integration tests |
+| 1.11 | E2E tests (start daemon, hit API, verify responses) | 🟢 | feature/phase1-daemon | 8 E2E tests, real HTTP |
 
 ## Phase 2 — Go TUI
 
