@@ -1,0 +1,8 @@
+.forge-task/
+target/
+daemon/target/
+tui/clawmon-tui
+*.exe
+*.dll
+*.so
+*.dylib
