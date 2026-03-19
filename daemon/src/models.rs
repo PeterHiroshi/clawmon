@@ -156,6 +156,69 @@ pub struct ActivityEvent {
     pub description: String,
 }
 
+/// System resource metrics for the host machine.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct SystemResources {
+    pub cpu: CpuInfo,
+    pub memory: MemoryInfo,
+    pub swap: SwapInfo,
+    pub disks: Vec<DiskInfo>,
+    pub gpus: Vec<GpuInfo>,
+    pub uptime_seconds: u64,
+    pub collected_at: String,
+}
+
+/// CPU information and usage.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct CpuInfo {
+    pub model: String,
+    pub core_count: usize,
+    pub usage_percent: f32,
+    pub per_core_usage: Vec<f32>,
+    pub load_avg_1m: f64,
+    pub load_avg_5m: f64,
+    pub load_avg_15m: f64,
+}
+
+/// RAM usage information.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct MemoryInfo {
+    pub total_bytes: u64,
+    pub used_bytes: u64,
+    pub available_bytes: u64,
+    pub usage_percent: f32,
+}
+
+/// Swap usage information.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct SwapInfo {
+    pub total_bytes: u64,
+    pub used_bytes: u64,
+    pub usage_percent: f32,
+}
+
+/// Disk/filesystem usage information.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct DiskInfo {
+    pub mount_point: String,
+    pub filesystem: String,
+    pub total_bytes: u64,
+    pub used_bytes: u64,
+    pub available_bytes: u64,
+    pub usage_percent: f32,
+}
+
+/// GPU information (from nvidia-smi).
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct GpuInfo {
+    pub name: String,
+    pub memory_used_mb: u64,
+    pub memory_total_mb: u64,
+    pub memory_usage_percent: f32,
+    pub utilization_percent: f32,
+    pub temperature_celsius: f32,
+}
+
 /// SSE event data.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct SseEvent {
@@ -233,6 +296,97 @@ mod tests {
         let json = serde_json::to_string(&status).unwrap();
         assert!(json.contains("\"is_clean\":true"));
         assert!(json.contains("\"branch\":\"main\""));
+    }
+
+    #[test]
+    fn test_system_resources_serialization() {
+        let resources = SystemResources {
+            cpu: CpuInfo {
+                model: "Intel i7-12700K".to_string(),
+                core_count: 16,
+                usage_percent: 48.2,
+                per_core_usage: vec![50.0, 46.4],
+                load_avg_1m: 2.15,
+                load_avg_5m: 1.87,
+                load_avg_15m: 1.42,
+            },
+            memory: MemoryInfo {
+                total_bytes: 16_000_000_000,
+                used_bytes: 12_400_000_000,
+                available_bytes: 3_600_000_000,
+                usage_percent: 78.5,
+            },
+            swap: SwapInfo {
+                total_bytes: 10_000_000_000,
+                used_bytes: 820_000_000,
+                usage_percent: 8.2,
+            },
+            disks: vec![DiskInfo {
+                mount_point: "/".to_string(),
+                filesystem: "ext4".to_string(),
+                total_bytes: 200_000_000_000,
+                used_bytes: 136_600_000_000,
+                available_bytes: 63_400_000_000,
+                usage_percent: 68.3,
+            }],
+            gpus: vec![GpuInfo {
+                name: "NVIDIA RTX 4090".to_string(),
+                memory_used_mb: 21900,
+                memory_total_mb: 24000,
+                memory_usage_percent: 91.2,
+                utilization_percent: 82.5,
+                temperature_celsius: 72.0,
+            }],
+            uptime_seconds: 86400,
+            collected_at: "2026-03-18T19:00:00Z".to_string(),
+        };
+        let json = serde_json::to_string(&resources).unwrap();
+        assert!(json.contains("\"model\":\"Intel i7-12700K\""));
+        assert!(json.contains("\"core_count\":16"));
+        assert!(json.contains("\"usage_percent\":48.2"));
+        assert!(json.contains("\"total_bytes\":16000000000"));
+        assert!(json.contains("\"mount_point\":\"/\""));
+        assert!(json.contains("\"name\":\"NVIDIA RTX 4090\""));
+        assert!(json.contains("\"uptime_seconds\":86400"));
+
+        // Roundtrip test
+        let deserialized: SystemResources = serde_json::from_str(&json).unwrap();
+        assert_eq!(deserialized.cpu.core_count, 16);
+        assert_eq!(deserialized.disks.len(), 1);
+        assert_eq!(deserialized.gpus.len(), 1);
+    }
+
+    #[test]
+    fn test_system_resources_empty_gpus() {
+        let resources = SystemResources {
+            cpu: CpuInfo {
+                model: "Unknown".to_string(),
+                core_count: 1,
+                usage_percent: 0.0,
+                per_core_usage: vec![],
+                load_avg_1m: 0.0,
+                load_avg_5m: 0.0,
+                load_avg_15m: 0.0,
+            },
+            memory: MemoryInfo {
+                total_bytes: 0,
+                used_bytes: 0,
+                available_bytes: 0,
+                usage_percent: 0.0,
+            },
+            swap: SwapInfo {
+                total_bytes: 0,
+                used_bytes: 0,
+                usage_percent: 0.0,
+            },
+            disks: vec![],
+            gpus: vec![],
+            uptime_seconds: 0,
+            collected_at: "2026-03-18T19:00:00Z".to_string(),
+        };
+        let json = serde_json::to_string(&resources).unwrap();
+        assert!(json.contains("\"gpus\":[]"));
+        assert!(json.contains("\"disks\":[]"));
     }
 
     #[test]

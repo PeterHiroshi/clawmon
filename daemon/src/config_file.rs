@@ -87,7 +87,11 @@ pub fn load_config_file() -> Result<Option<ConfigFile>> {
     }
 
     let content = std::fs::read_to_string(&path).map_err(|e| {
-        DaemonError::Config(format!("failed to read config file {}: {}", path.display(), e))
+        DaemonError::Config(format!(
+            "failed to read config file {}: {}",
+            path.display(),
+            e
+        ))
     })?;
 
     let config: ConfigFile = toml::from_str(&content).map_err(|e| {
@@ -167,10 +171,7 @@ pub fn workspace_paths_from_config(config: &ConfigFile) -> Vec<PathBuf> {
         None => return Vec::new(),
     };
 
-    paths
-        .iter()
-        .map(|p| expand_tilde(p))
-        .collect()
+    paths.iter().map(|p| expand_tilde(p)).collect()
 }
 
 /// Get the user's home directory.
@@ -181,9 +182,8 @@ fn home_dir() -> Option<PathBuf> {
 /// Parses a TOML string into a ConfigFile.
 /// Useful for testing without filesystem access.
 pub fn parse_config(content: &str) -> Result<ConfigFile> {
-    toml::from_str(content).map_err(|e| {
-        DaemonError::Config(format!("failed to parse config: {}", e))
-    })
+    toml::from_str(content)
+        .map_err(|e| DaemonError::Config(format!("failed to parse config: {}", e)))
 }
 
 #[cfg(test)]
@@ -221,10 +221,7 @@ theme = "dark"
         assert_eq!(ws.paths.unwrap().len(), 2);
 
         let tui = config.tui.unwrap();
-        assert_eq!(
-            tui.daemon_url.unwrap(),
-            "http://localhost:8080/api/v1"
-        );
+        assert_eq!(tui.daemon_url.unwrap(), "http://localhost:8080/api/v1");
         assert_eq!(tui.refresh_interval, Some(10));
         assert_eq!(tui.theme.unwrap(), "dark");
     }

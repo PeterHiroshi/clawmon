@@ -11,17 +11,18 @@ import (
 
 // DashboardData aggregates all data needed for the dashboard overview.
 type DashboardData struct {
-	WorkspacePath  string
-	WorkspaceName  string
-	WorkspaceCount int
-	WorkspaceIndex int
-	DaemonOnline   bool
-	Uptime         uint64
-	GitStatus      *models.GitStatus
-	Tasks          []models.TaskInfo
-	Processes      []models.ProcessInfo
-	EnvHealth      *models.EnvHealth
-	Activity       []models.ActivityEvent
+	WorkspacePath   string
+	WorkspaceName   string
+	WorkspaceCount  int
+	WorkspaceIndex  int
+	DaemonOnline    bool
+	Uptime          uint64
+	GitStatus       *models.GitStatus
+	Tasks           []models.TaskInfo
+	Processes       []models.ProcessInfo
+	EnvHealth       *models.EnvHealth
+	Activity        []models.ActivityEvent
+	SystemResources *models.SystemResources
 }
 
 // RenderDashboard renders the dashboard overview tab.
@@ -45,10 +46,11 @@ func RenderDashboard(data DashboardData, width, height int) string {
 	gitCard := renderGitCard(data.GitStatus, cardWidth)
 	processCard := renderProcessCard(data.Processes, cardWidth)
 	envCard := renderEnvCard(data.EnvHealth, cardWidth)
+	systemCard := renderSystemCard(data.SystemResources, cardWidth)
 
 	topRow := lipgloss.JoinHorizontal(lipgloss.Top, tasksCard, "  ", gitCard)
 	bottomRow := lipgloss.JoinHorizontal(lipgloss.Top, processCard, "  ", envCard)
-	sections = append(sections, topRow, bottomRow)
+	sections = append(sections, topRow, bottomRow, systemCard)
 
 	// Quick activity feed
 	activityFeed := renderQuickActivity(data.Activity)
@@ -189,6 +191,32 @@ func renderEnvCard(env *models.EnvHealth, width int) string {
 		content += ErrorStyle.Render("Missing: " + strings.Join(missing, ", "))
 	} else {
 		content += SuccessStyle.Render("All tools available")
+	}
+
+	return CardStyle.Width(width).Render(content)
+}
+
+func renderSystemCard(sys *models.SystemResources, width int) string {
+	content := TitleStyle.Render("System") + "\n\n"
+
+	if sys == nil {
+		content += DimStyle.Render("No data")
+		return CardStyle.Width(width).Render(content)
+	}
+
+	// CPU mini-bar
+	content += fmt.Sprintf("CPU:  %s %.1f%%\n", RenderBar(sys.CPU.UsagePercent), sys.CPU.UsagePercent)
+
+	// Memory mini-bar
+	content += fmt.Sprintf("RAM:  %s %.1f%%\n", RenderBar(sys.Memory.UsagePercent), sys.Memory.UsagePercent)
+
+	// GPU status (if present)
+	if len(sys.GPUs) > 0 {
+		gpu := sys.GPUs[0]
+		content += fmt.Sprintf("GPU:  %s %.1f%%  VRAM: %.0f%%",
+			RenderBar(gpu.UtilizationPercent), gpu.UtilizationPercent, gpu.MemoryUsagePercent)
+	} else {
+		content += DimStyle.Render("GPU:  none")
 	}
 
 	return CardStyle.Width(width).Render(content)

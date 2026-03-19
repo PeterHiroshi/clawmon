@@ -46,6 +46,7 @@ func TestRenderDashboard(t *testing.T) {
 	assert.Contains(t, result, "Git")
 	assert.Contains(t, result, "Processes")
 	assert.Contains(t, result, "Environment")
+	assert.Contains(t, result, "System")
 }
 
 func TestRenderDashboardEmptyData(t *testing.T) {
@@ -69,4 +70,35 @@ func TestRenderDashboardWithProcesses(t *testing.T) {
 	result := RenderDashboard(data, 80, 24)
 	assert.Contains(t, result, "Running: 1")
 	assert.Contains(t, result, "Stalled")
+}
+
+func TestRenderDashboardWithSystem(t *testing.T) {
+	data := DashboardData{
+		DaemonOnline: true,
+		SystemResources: &models.SystemResources{
+			CPU:    models.CpuInfo{Model: "Test", CoreCount: 4, UsagePercent: 48.2},
+			Memory: models.MemoryInfo{TotalBytes: 16000000000, UsedBytes: 12400000000, UsagePercent: 78.5},
+			GPUs: []models.GpuInfo{
+				{Name: "RTX 4090", UtilizationPercent: 82.5, MemoryUsagePercent: 91.2},
+			},
+		},
+	}
+	result := RenderDashboard(data, 80, 30)
+	assert.Contains(t, result, "System")
+	assert.Contains(t, result, "CPU:")
+	assert.Contains(t, result, "RAM:")
+	assert.Contains(t, result, "GPU:")
+}
+
+func TestRenderDashboardSystemNoGPU(t *testing.T) {
+	data := DashboardData{
+		DaemonOnline: true,
+		SystemResources: &models.SystemResources{
+			CPU:    models.CpuInfo{Model: "Test", CoreCount: 2, UsagePercent: 10.0},
+			Memory: models.MemoryInfo{TotalBytes: 8000000000, UsedBytes: 4000000000, UsagePercent: 50.0},
+			GPUs:   []models.GpuInfo{},
+		},
+	}
+	result := RenderDashboard(data, 80, 30)
+	assert.Contains(t, result, "GPU:  none")
 }

@@ -14,6 +14,7 @@ use tokio_stream::wrappers::BroadcastStream;
 use crate::collectors::env::EnvCollector;
 use crate::collectors::git::GitCollector;
 use crate::collectors::process::ProcessCollector;
+use crate::collectors::system::SystemCollector;
 use crate::collectors::tasks::TaskCollector;
 use crate::config::{Config, VERSION};
 use crate::events::EventBus;
@@ -172,7 +173,9 @@ pub async fn workspace_processes(
         Ok(processes) => Ok(Json(ApiResponse::new(processes))),
         Err(err) => {
             tracing::warn!("process collector failed for workspace {}: {}", id, err);
-            Ok(Json(ApiResponse::new(Vec::<crate::models::ProcessInfo>::new())))
+            Ok(Json(ApiResponse::new(
+                Vec::<crate::models::ProcessInfo>::new(),
+            )))
         }
     }
 }
@@ -192,6 +195,48 @@ pub async fn workspace_env(
             Ok(Json(ApiResponse::new(crate::models::EnvHealth {
                 tools: vec![],
                 hooks: vec![],
+            })))
+        }
+    }
+}
+
+/// GET /api/v1/workspaces/{id}/system
+pub async fn workspace_system(
+    State(state): State<AppState>,
+    Path(id): Path<String>,
+) -> std::result::Result<impl IntoResponse, Response> {
+    let _ws = find_workspace(&state, &id)?;
+    let mut collector = SystemCollector::new();
+
+    match collector.collect() {
+        Ok(resources) => Ok(Json(ApiResponse::new(resources))),
+        Err(err) => {
+            tracing::warn!("system collector failed for workspace {}: {}", id, err);
+            Ok(Json(ApiResponse::new(crate::models::SystemResources {
+                cpu: crate::models::CpuInfo {
+                    model: "Unknown".to_string(),
+                    core_count: 0,
+                    usage_percent: 0.0,
+                    per_core_usage: vec![],
+                    load_avg_1m: 0.0,
+                    load_avg_5m: 0.0,
+                    load_avg_15m: 0.0,
+                },
+                memory: crate::models::MemoryInfo {
+                    total_bytes: 0,
+                    used_bytes: 0,
+                    available_bytes: 0,
+                    usage_percent: 0.0,
+                },
+                swap: crate::models::SwapInfo {
+                    total_bytes: 0,
+                    used_bytes: 0,
+                    usage_percent: 0.0,
+                },
+                disks: vec![],
+                gpus: vec![],
+                uptime_seconds: 0,
+                collected_at: chrono::Utc::now().to_rfc3339(),
             })))
         }
     }

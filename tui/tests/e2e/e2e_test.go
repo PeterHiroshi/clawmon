@@ -93,6 +93,29 @@ func buildFullMockDaemon(t *testing.T) *httptest.Server {
 		})
 	})
 
+	mux.HandleFunc("/workspaces/clawmon/system", func(w http.ResponseWriter, r *http.Request) {
+		writeJSON(t, w, map[string]interface{}{
+			"cpu": map[string]interface{}{
+				"model": "Test CPU i7-12700K", "core_count": 16, "usage_percent": 48.2,
+				"per_core_usage": []float32{50.0, 46.0}, "load_avg_1m": 2.15, "load_avg_5m": 1.87, "load_avg_15m": 1.42,
+			},
+			"memory": map[string]interface{}{
+				"total_bytes": 16000000000, "used_bytes": 12400000000, "available_bytes": 3600000000, "usage_percent": 78.5,
+			},
+			"swap": map[string]interface{}{
+				"total_bytes": 10000000000, "used_bytes": 820000000, "usage_percent": 8.2,
+			},
+			"disks": []map[string]interface{}{
+				{"mount_point": "/", "filesystem": "ext4", "total_bytes": 200000000000, "used_bytes": 136600000000, "available_bytes": 63400000000, "usage_percent": 68.3},
+			},
+			"gpus": []map[string]interface{}{
+				{"name": "NVIDIA RTX 4090", "memory_used_mb": 21900, "memory_total_mb": 24000, "memory_usage_percent": 91.2, "utilization_percent": 82.5, "temperature_celsius": 72.0},
+			},
+			"uptime_seconds": 86400,
+			"collected_at":   "2026-03-18T19:00:00Z",
+		})
+	})
+
 	mux.HandleFunc("/workspaces/clawmon/activity", func(w http.ResponseWriter, r *http.Request) {
 		writeJSON(t, w, []map[string]interface{}{
 			{"timestamp": completed.Format(time.RFC3339), "event_type": "task_completed", "workspace_id": "clawmon", "description": "Task completed: build-tui"},
@@ -167,6 +190,11 @@ func loadAllData(t *testing.T, m app.Model, c *client.HTTPClient) app.Model {
 	updated, _ = m.Update(app.ActivityMsg{Events: activity})
 	m = updated.(app.Model)
 
+	sys, err := c.GetSystemResources(wsID)
+	require.NoError(t, err)
+	updated, _ = m.Update(app.SystemMsg{Resources: sys})
+	m = updated.(app.Model)
+
 	return m
 }
 
@@ -189,6 +217,7 @@ func TestE2EDashboardRendering(t *testing.T) {
 	assert.Contains(t, view, "Git")
 	assert.Contains(t, view, "Processes")
 	assert.Contains(t, view, "Environment")
+	assert.Contains(t, view, "System")
 	assert.Contains(t, view, "daemon")
 }
 
@@ -246,6 +275,29 @@ func TestE2EActivityTabRendering(t *testing.T) {
 	assert.Contains(t, view, "build-tui")
 }
 
+func TestE2ESystemTabRendering(t *testing.T) {
+	server := buildFullMockDaemon(t)
+	defer server.Close()
+
+	c := client.NewHTTPClient(server.URL)
+	m := app.NewModel(c)
+	m.Width = 120
+	m.Height = 40
+	m = loadAllData(t, m, c)
+
+	m.ActiveTab = app.TabSystem
+	view := m.View()
+
+	assert.Contains(t, view, "CPU")
+	assert.Contains(t, view, "Test CPU i7-12700K")
+	assert.Contains(t, view, "16 cores")
+	assert.Contains(t, view, "Memory")
+	assert.Contains(t, view, "Disk")
+	assert.Contains(t, view, "GPU")
+	assert.Contains(t, view, "NVIDIA RTX 4090")
+	assert.Contains(t, view, "72°C")
+}
+
 func TestE2ETabSwitching(t *testing.T) {
 	server := buildFullMockDaemon(t)
 	defer server.Close()
@@ -257,7 +309,7 @@ func TestE2ETabSwitching(t *testing.T) {
 	m = loadAllData(t, m, c)
 
 	// Cycle through all tabs
-	for i := 1; i <= 4; i++ {
+	for i := 1; i <= 5; i++ {
 		key := fmt.Sprintf("%d", i)
 		updated, _ := m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune(key)})
 		m = updated.(app.Model)

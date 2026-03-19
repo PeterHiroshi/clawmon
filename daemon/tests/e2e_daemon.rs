@@ -51,9 +51,7 @@ fn setup_git_repo(dir: &std::path::Path) {
     let file_path = dir.join("file.txt");
     fs::write(&file_path, "content").unwrap();
     let mut index = repo.index().unwrap();
-    index
-        .add_path(std::path::Path::new("file.txt"))
-        .unwrap();
+    index.add_path(std::path::Path::new("file.txt")).unwrap();
     index.write().unwrap();
     let tree_id = index.write_tree().unwrap();
     let tree = repo.find_tree(tree_id).unwrap();
@@ -187,10 +185,12 @@ async fn e2e_workspace_not_found() {
 
     assert_eq!(resp.status(), 404);
     let json: serde_json::Value = resp.json().await.unwrap();
-    assert!(json["error"]
-        .as_str()
-        .unwrap()
-        .contains("workspace not found"));
+    assert!(
+        json["error"]
+            .as_str()
+            .unwrap()
+            .contains("workspace not found")
+    );
 
     handle.abort();
 }
@@ -248,6 +248,56 @@ async fn e2e_activity_endpoint() {
 }
 
 #[tokio::test]
+async fn e2e_system_endpoint() {
+    let tmp = TempDir::new().unwrap();
+    let proj = tmp.path().join("sysproj");
+    fs::create_dir_all(&proj).unwrap();
+
+    let (base_url, handle) = start_daemon(vec![proj]).await;
+    let client = reqwest::Client::new();
+
+    let resp = client
+        .get(format!("{}/api/v1/workspaces/sysproj/system", base_url))
+        .send()
+        .await
+        .unwrap();
+
+    assert_eq!(resp.status(), 200);
+    let json: serde_json::Value = resp.json().await.unwrap();
+    let data = &json["data"];
+
+    // CPU
+    assert!(data["cpu"]["core_count"].as_u64().unwrap() > 0);
+    assert!(data["cpu"]["model"].is_string());
+    assert!(data["cpu"]["usage_percent"].is_number());
+    assert!(data["cpu"]["per_core_usage"].is_array());
+    assert!(data["cpu"]["load_avg_1m"].is_number());
+
+    // Memory
+    assert!(data["memory"]["total_bytes"].as_u64().unwrap() > 0);
+    assert!(data["memory"]["used_bytes"].is_number());
+    assert!(data["memory"]["available_bytes"].is_number());
+    assert!(data["memory"]["usage_percent"].is_number());
+
+    // Swap
+    assert!(data["swap"]["total_bytes"].is_number());
+    assert!(data["swap"]["usage_percent"].is_number());
+
+    // Disks
+    assert!(data["disks"].is_array());
+
+    // GPUs (may be empty)
+    assert!(data["gpus"].is_array());
+
+    // Uptime
+    assert!(data["uptime_seconds"].as_u64().unwrap() > 0);
+    assert!(data["collected_at"].is_string());
+    assert!(json["timestamp"].is_string());
+
+    handle.abort();
+}
+
+#[tokio::test]
 async fn e2e_sse_endpoint_connects() {
     let (base_url, handle) = start_daemon(vec![]).await;
     let client = reqwest::Client::new();
@@ -262,7 +312,12 @@ async fn e2e_sse_endpoint_connects() {
 
     assert_eq!(resp.status(), 200);
     // Content type should be text/event-stream
-    let content_type = resp.headers().get("content-type").unwrap().to_str().unwrap();
+    let content_type = resp
+        .headers()
+        .get("content-type")
+        .unwrap()
+        .to_str()
+        .unwrap();
     assert!(content_type.contains("text/event-stream"));
 
     handle.abort();

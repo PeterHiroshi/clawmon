@@ -80,9 +80,7 @@ impl Config {
         let port = if args.port != DEFAULT_PORT {
             args.port
         } else {
-            file_daemon
-                .and_then(|d| d.port)
-                .unwrap_or(args.port)
+            file_daemon.and_then(|d| d.port).unwrap_or(args.port)
         };
 
         // Poll interval: CLI (if non-default) > config file > default

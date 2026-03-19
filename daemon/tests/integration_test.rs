@@ -30,9 +30,7 @@ fn setup_git_repo(dir: &std::path::Path) {
     let file_path = dir.join("README.md");
     fs::write(&file_path, "# Test").unwrap();
     let mut index = repo.index().unwrap();
-    index
-        .add_path(std::path::Path::new("README.md"))
-        .unwrap();
+    index.add_path(std::path::Path::new("README.md")).unwrap();
     index.write().unwrap();
     let tree_id = index.write_tree().unwrap();
     let tree = repo.find_tree(tree_id).unwrap();
@@ -191,7 +189,12 @@ async fn test_workspace_not_found() {
         .await
         .unwrap();
     let json: serde_json::Value = serde_json::from_slice(&body).unwrap();
-    assert!(json["error"].as_str().unwrap().contains("workspace not found"));
+    assert!(
+        json["error"]
+            .as_str()
+            .unwrap()
+            .contains("workspace not found")
+    );
 }
 
 #[tokio::test]
@@ -249,6 +252,40 @@ async fn test_workspace_processes_endpoint() {
         .unwrap();
     let json: serde_json::Value = serde_json::from_slice(&body).unwrap();
     assert!(json["data"].is_array());
+}
+
+#[tokio::test]
+async fn test_workspace_system_endpoint() {
+    let tmp = TempDir::new().unwrap();
+    let project = tmp.path().join("sysproject");
+    fs::create_dir_all(&project).unwrap();
+
+    let config = test_config_with_projects(vec![project]);
+    let state = AppState::new(config);
+    let app = build_router(state);
+
+    let response = app
+        .oneshot(
+            Request::builder()
+                .uri("/api/v1/workspaces/sysproject/system")
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+
+    assert_eq!(response.status(), StatusCode::OK);
+    let body = axum::body::to_bytes(response.into_body(), usize::MAX)
+        .await
+        .unwrap();
+    let json: serde_json::Value = serde_json::from_slice(&body).unwrap();
+    assert!(json["data"]["cpu"]["core_count"].is_number());
+    assert!(json["data"]["memory"]["total_bytes"].is_number());
+    assert!(json["data"]["disks"].is_array());
+    assert!(json["data"]["gpus"].is_array());
+    assert!(json["data"]["uptime_seconds"].is_number());
+    assert!(json["data"]["collected_at"].is_string());
+    assert!(json["timestamp"].is_string());
 }
 
 #[tokio::test]

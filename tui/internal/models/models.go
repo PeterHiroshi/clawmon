@@ -25,13 +25,13 @@ type WorkspaceInfo struct {
 
 // GitStatus represents git sync state for a workspace.
 type GitStatus struct {
-	Branch           string      `json:"branch"`
-	IsClean          bool        `json:"is_clean"`
-	UncommittedFiles []string    `json:"uncommitted_files"`
-	Ahead            int         `json:"ahead"`
-	Behind           int         `json:"behind"`
-	LastCommit       *CommitInfo `json:"last_commit"`
-	LastPushTime     *time.Time  `json:"last_push_time"`
+	Branch           string       `json:"branch"`
+	IsClean          bool         `json:"is_clean"`
+	UncommittedFiles []string     `json:"uncommitted_files"`
+	Ahead            int          `json:"ahead"`
+	Behind           int          `json:"behind"`
+	LastCommit       *CommitInfo  `json:"last_commit"`
+	LastPushTime     *time.Time   `json:"last_push_time"`
 	RecentCommits    []CommitInfo `json:"recent_commits"`
 }
 
@@ -111,7 +111,7 @@ type HookCheck struct {
 
 // EnvHealth is the full environment health report.
 type EnvHealth struct {
-	Tools []EnvCheck `json:"tools"`
+	Tools []EnvCheck  `json:"tools"`
 	Hooks []HookCheck `json:"hooks"`
 }
 
@@ -119,14 +119,14 @@ type EnvHealth struct {
 type ActivityType string
 
 const (
-	ActivityGitCommit       ActivityType = "git_commit"
-	ActivityGitPush         ActivityType = "git_push"
-	ActivityTaskStarted     ActivityType = "task_started"
-	ActivityTaskCompleted   ActivityType = "task_completed"
-	ActivityTaskFailed      ActivityType = "task_failed"
-	ActivityProcessStarted  ActivityType = "process_started"
-	ActivityProcessStopped  ActivityType = "process_stopped"
-	ActivityFileChanged     ActivityType = "file_changed"
+	ActivityGitCommit      ActivityType = "git_commit"
+	ActivityGitPush        ActivityType = "git_push"
+	ActivityTaskStarted    ActivityType = "task_started"
+	ActivityTaskCompleted  ActivityType = "task_completed"
+	ActivityTaskFailed     ActivityType = "task_failed"
+	ActivityProcessStarted ActivityType = "process_started"
+	ActivityProcessStopped ActivityType = "process_stopped"
+	ActivityFileChanged    ActivityType = "file_changed"
 )
 
 // ActivityEvent is a single item in the activity timeline.
@@ -135,6 +135,63 @@ type ActivityEvent struct {
 	EventType   ActivityType `json:"event_type"`
 	WorkspaceID string       `json:"workspace_id"`
 	Description string       `json:"description"`
+}
+
+// SystemResources contains host system resource metrics.
+type SystemResources struct {
+	CPU           CpuInfo    `json:"cpu"`
+	Memory        MemoryInfo `json:"memory"`
+	Swap          SwapInfo   `json:"swap"`
+	Disks         []DiskInfo `json:"disks"`
+	GPUs          []GpuInfo  `json:"gpus"`
+	UptimeSeconds uint64     `json:"uptime_seconds"`
+	CollectedAt   string     `json:"collected_at"`
+}
+
+// CpuInfo contains CPU identification and usage metrics.
+type CpuInfo struct {
+	Model        string    `json:"model"`
+	CoreCount    int       `json:"core_count"`
+	UsagePercent float32   `json:"usage_percent"`
+	PerCoreUsage []float32 `json:"per_core_usage"`
+	LoadAvg1m    float64   `json:"load_avg_1m"`
+	LoadAvg5m    float64   `json:"load_avg_5m"`
+	LoadAvg15m   float64   `json:"load_avg_15m"`
+}
+
+// MemoryInfo contains RAM usage metrics.
+type MemoryInfo struct {
+	TotalBytes     uint64  `json:"total_bytes"`
+	UsedBytes      uint64  `json:"used_bytes"`
+	AvailableBytes uint64  `json:"available_bytes"`
+	UsagePercent   float32 `json:"usage_percent"`
+}
+
+// SwapInfo contains swap usage metrics.
+type SwapInfo struct {
+	TotalBytes   uint64  `json:"total_bytes"`
+	UsedBytes    uint64  `json:"used_bytes"`
+	UsagePercent float32 `json:"usage_percent"`
+}
+
+// DiskInfo contains filesystem usage metrics.
+type DiskInfo struct {
+	MountPoint     string  `json:"mount_point"`
+	Filesystem     string  `json:"filesystem"`
+	TotalBytes     uint64  `json:"total_bytes"`
+	UsedBytes      uint64  `json:"used_bytes"`
+	AvailableBytes uint64  `json:"available_bytes"`
+	UsagePercent   float32 `json:"usage_percent"`
+}
+
+// GpuInfo contains GPU metrics (from nvidia-smi).
+type GpuInfo struct {
+	Name               string  `json:"name"`
+	MemoryUsedMB       uint64  `json:"memory_used_mb"`
+	MemoryTotalMB      uint64  `json:"memory_total_mb"`
+	MemoryUsagePercent float32 `json:"memory_usage_percent"`
+	UtilizationPercent float32 `json:"utilization_percent"`
+	TemperatureCelsius float32 `json:"temperature_celsius"`
 }
 
 // SseEvent represents a server-sent event from the daemon.

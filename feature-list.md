@@ -47,3 +47,13 @@
 | 3.3 | Error handling & graceful degradation (daemon offline, partial data) | 🟢 | feature/phase3-polish | Reconnect w/ exp backoff, stale indicators, degraded data |
 | 3.4 | Configuration file support (~/.clawmon/config.toml) | 🟢 | feature/phase3-polish | toml crate (Rust), BurntSushi/toml (Go), CLI overrides file |
 | 3.5 | Cross-platform build (Linux, macOS) | 🟢 | feature/phase3-polish | CI workflow, Makefile targets, /proc fallback to ps |
+
+## Phase 4 — System Resources
+
+| # | Feature | Status | Branch | Notes |
+|---|---------|--------|--------|-------|
+| 4.1 | System resource collector (sysinfo crate) | 🟢 | feature/system-resources | CPU, memory, disk, GPU |
+| 4.2 | System API endpoint + SSE events | 🟢 | feature/system-resources | GET /workspaces/{id}/system + system_update |
+| 4.3 | System tab with color-coded bars | 🟢 | feature/system-resources | Tab 5, thresholds: green/yellow/orange/red |
+| 4.4 | Dashboard system card | 🟢 | feature/system-resources | CPU + RAM mini-bars, GPU status |
+| 4.5 | Unit + integration + E2E tests | 🟢 | feature/system-resources | Rust + Go tests, full coverage |
