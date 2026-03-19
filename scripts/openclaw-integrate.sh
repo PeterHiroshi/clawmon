@@ -276,35 +276,74 @@ SYSTEMD
     printf "Run ${BOLD}clawmon${RESET} (or ${BOLD}${tui_bin}${RESET}) to open the dashboard.\n\n"
 }
 
+# --- Docker: Detect workspace inside container ---
+
+detect_container_workspace() {
+    local container="$1"
+
+    # User-provided override
+    if [ -n "${OPENCLAW_WS}" ]; then
+        echo "${OPENCLAW_WS}"
+        return 0
+    fi
+
+    # Auto-detect inside container
+    local detected
+    detected=$(docker exec "${container}" bash -c '
+        if [ -n "${OPENCLAW_WORKSPACE:-}" ] && [ -d "${OPENCLAW_WORKSPACE}" ]; then
+            echo "${OPENCLAW_WORKSPACE}"
+        elif [ -d "${HOME}/.openclaw/workspace-main" ]; then
+            echo "${HOME}/.openclaw/workspace-main"
+        elif [ -d "/home/node/.openclaw/workspace-main" ]; then
+            echo "/home/node/.openclaw/workspace-main"
+        elif [ -d "/root/.openclaw/workspace-main" ]; then
+            echo "/root/.openclaw/workspace-main"
+        else
+            echo ""
+        fi
+    ' 2>/dev/null || echo "")
+
+    if [ -n "${detected}" ]; then
+        echo "${detected}"
+        return 0
+    fi
+
+    return 1
+}
+
+# --- Docker: Check port mapping ---
+
+check_port_mapping() {
+    local container="$1"
+    local port="$2"
+
+    if docker port "${container}" "${port}" >/dev/null 2>&1; then
+        return 0
+    fi
+    return 1
+}
+
 # --- Docker Mode ---
 
 integrate_docker() {
     printf "\n${BOLD}clawmon - Docker Integration${RESET}\n\n"
 
-    # Check docker is available
+    # Step 1: Check prerequisites on host
     if ! command -v docker >/dev/null 2>&1; then
         error "Docker not found. Is it installed?"
         exit 1
     fi
 
-    # Find binaries on host
-    local daemon_bin tui_bin
+    local daemon_bin
     daemon_bin=$(find_binary "clawmon-daemon") || {
         error "clawmon-daemon not found on host. Install first:"
         error "  curl -fsSL https://raw.githubusercontent.com/PeterHiroshi/clawmon/main/scripts/install.sh | bash"
         exit 1
     }
-    tui_bin=$(find_binary "clawmon-tui") || {
-        error "clawmon-tui not found on host. Install first."
-        exit 1
-    }
-
     ok "Found daemon: ${daemon_bin}"
-    ok "Found TUI: ${tui_bin}"
 
     # Check container exists and is running
     if ! docker ps --format '{{.Names}}' | grep -q "^${CONTAINER_NAME}$"; then
-        # Check if container exists but is stopped
         if docker ps -a --format '{{.Names}}' | grep -q "^${CONTAINER_NAME}$"; then
             error "Container '${CONTAINER_NAME}' exists but is not running"
             error "Start it first: docker start ${CONTAINER_NAME}"
@@ -314,44 +353,40 @@ integrate_docker() {
         fi
         exit 1
     fi
-
     ok "Found running container: ${CONTAINER_NAME}"
 
-    # Copy binaries into container
-    info "Copying binaries into container..."
+    # Step 2: Copy daemon binary into container
+    info "Copying daemon binary into container..."
     docker cp "${daemon_bin}" "${CONTAINER_NAME}:/usr/local/bin/clawmon-daemon"
-    docker cp "${tui_bin}" "${CONTAINER_NAME}:/usr/local/bin/clawmon-tui"
-    docker exec "${CONTAINER_NAME}" chmod +x /usr/local/bin/clawmon-daemon /usr/local/bin/clawmon-tui
-    ok "Binaries copied to container"
+    docker exec "${CONTAINER_NAME}" chmod +x /usr/local/bin/clawmon-daemon
+    ok "Daemon binary copied to container"
 
-    # Detect workspace inside container
-    local container_workspace
-    container_workspace=$(docker exec "${CONTAINER_NAME}" bash -c '
-        if [ -n "${OPENCLAW_WORKSPACE:-}" ] && [ -d "${OPENCLAW_WORKSPACE}" ]; then
-            echo "${OPENCLAW_WORKSPACE}"
-        elif [ -d "${HOME}/.openclaw/workspace-main" ]; then
-            echo "${HOME}/.openclaw/workspace-main"
-        elif [ -d "/root/.openclaw/workspace-main" ]; then
-            echo "/root/.openclaw/workspace-main"
-        else
-            echo ""
-        fi
-    ' 2>/dev/null || echo "")
-
-    if [ -z "${container_workspace}" ]; then
-        warn "Could not auto-detect workspace inside container"
-        container_workspace="/root/.openclaw/workspace-main"
-        warn "Using default: ${container_workspace}"
+    # Verify binary works in container
+    if docker exec "${CONTAINER_NAME}" /usr/local/bin/clawmon-daemon --version >/dev/null 2>&1; then
+        ok "Binary verified inside container"
     else
-        ok "Detected workspace in container: ${container_workspace}"
+        warn "Could not verify daemon binary inside container (may need compatible build)"
     fi
 
-    # Create config inside container
+    # Step 3: Auto-detect workspace inside container
+    local container_workspace
+    container_workspace=$(detect_container_workspace "${CONTAINER_NAME}") || {
+        warn "Could not auto-detect workspace inside container"
+        container_workspace="/home/node/.openclaw/workspace-main"
+        warn "Using default: ${container_workspace}"
+    }
+    ok "Workspace: ${container_workspace}"
+
+    # Step 4: Create config inside container with bind = "0.0.0.0"
     info "Creating config inside container..."
-    docker exec "${CONTAINER_NAME}" mkdir -p /root/.clawmon
-    docker exec "${CONTAINER_NAME}" bash -c "cat > /root/.clawmon/config.toml << 'TOML'
+    local container_home
+    container_home=$(docker exec "${CONTAINER_NAME}" bash -c 'echo "${HOME}"' 2>/dev/null || echo "/root")
+    docker exec "${CONTAINER_NAME}" mkdir -p "${container_home}/.clawmon"
+    docker exec "${CONTAINER_NAME}" bash -c "cat > ${container_home}/.clawmon/config.toml << 'TOML'
 [daemon]
 port = 9876
+bind = \"0.0.0.0\"
+mode = \"docker\"
 poll_interval = 30
 
 [daemon.workspaces]
@@ -362,31 +397,80 @@ daemon_url = \"http://127.0.0.1:9876\"
 refresh_interval = 5
 theme = \"dark\"
 TOML"
-    ok "Config created in container"
+    ok "Config created (bind = 0.0.0.0, mode = docker)"
 
-    # Start daemon in container (background, no systemd)
+    # Step 5: Start daemon inside container
     info "Starting daemon in container..."
-    docker exec "${CONTAINER_NAME}" bash -c 'pkill clawmon-daemon 2>/dev/null || true'
-    docker exec -d "${CONTAINER_NAME}" /usr/local/bin/clawmon-daemon --workspace "${container_workspace}"
-    ok "Daemon started in container"
-
-    # Verify daemon is running
+    docker exec "${CONTAINER_NAME}" bash -c 'pkill -f clawmon-daemon 2>/dev/null || true'
     sleep 1
-    if docker exec "${CONTAINER_NAME}" pgrep -f clawmon-daemon >/dev/null 2>&1; then
-        ok "Daemon is running"
+    docker exec -d "${CONTAINER_NAME}" bash -c "nohup /usr/local/bin/clawmon-daemon > /tmp/clawmon-daemon.log 2>&1 &"
+    ok "Daemon start command issued"
+
+    # Verify daemon started
+    sleep 2
+    local daemon_pid
+    daemon_pid=$(docker exec "${CONTAINER_NAME}" pgrep -f clawmon-daemon 2>/dev/null || echo "")
+    if [ -n "${daemon_pid}" ]; then
+        ok "Daemon is running (PID: ${daemon_pid})"
     else
-        warn "Daemon may not have started — check container logs"
+        warn "Daemon may not have started. Check logs:"
+        warn "  docker exec ${CONTAINER_NAME} cat /tmp/clawmon-daemon.log"
     fi
 
-    printf "\n${GREEN}${BOLD}Integration complete!${RESET}\n\n"
-    printf "Access the dashboard:\n\n"
-    printf "  ${BOLD}Option A (recommended):${RESET} Run TUI on host with port forwarding\n"
-    printf "    If container port 9876 is exposed:\n"
-    printf "      ${BOLD}${tui_bin}${RESET}\n\n"
-    printf "  ${BOLD}Option B:${RESET} Run TUI inside container\n"
-    printf "      ${BOLD}docker exec -it ${CONTAINER_NAME} clawmon-tui${RESET}\n\n"
-    printf "Note: If the container resets, re-run this script to reinstall.\n"
-    printf "Quick re-install: ${BOLD}$(basename "$0") --mode docker --container-name ${CONTAINER_NAME}${RESET}\n\n"
+    # Verify health endpoint from inside container
+    if docker exec "${CONTAINER_NAME}" bash -c 'command -v curl >/dev/null 2>&1 && curl -sf http://127.0.0.1:9876/api/v1/health >/dev/null' 2>/dev/null; then
+        ok "Health endpoint responding inside container"
+    fi
+
+    # Step 6: Check port exposure
+    local port_mapped=false
+    if check_port_mapping "${CONTAINER_NAME}" 9876; then
+        port_mapped=true
+        ok "Port 9876 is mapped from container"
+    fi
+
+    # Step 7: Create bootstrap hook for container restart recovery
+    info "Creating bootstrap hook..."
+    docker exec "${CONTAINER_NAME}" bash -c "cat > /usr/local/bin/clawmon-bootstrap.sh << 'BOOTSTRAP'
+#!/bin/bash
+# Auto-start clawmon-daemon after container restart
+if command -v clawmon-daemon >/dev/null 2>&1; then
+    nohup clawmon-daemon > /tmp/clawmon-daemon.log 2>&1 &
+fi
+BOOTSTRAP"
+    docker exec "${CONTAINER_NAME}" chmod +x /usr/local/bin/clawmon-bootstrap.sh
+    ok "Bootstrap hook created at /usr/local/bin/clawmon-bootstrap.sh"
+
+    # Step 8: Print summary
+    printf "\n${GREEN}${BOLD}clawmon Docker integration complete!${RESET}\n\n"
+    if [ -n "${daemon_pid}" ]; then
+        printf "  Daemon running in container: ${BOLD}${CONTAINER_NAME}${RESET} (PID: ${daemon_pid})\n"
+    else
+        printf "  Daemon container: ${BOLD}${CONTAINER_NAME}${RESET}\n"
+    fi
+    printf "  Listening on: ${BOLD}0.0.0.0:9876${RESET}\n"
+    printf "  Workspace: ${BOLD}${container_workspace}${RESET}\n\n"
+
+    if [ "${port_mapped}" = "true" ]; then
+        printf "  To open dashboard:\n"
+        printf "    ${BOLD}clawmon-tui${RESET}\n\n"
+    else
+        printf "  ${YELLOW}Port 9876 is not exposed from the container.${RESET}\n\n"
+        printf "  ${BOLD}Option A: Recreate container with port mapping (recommended):${RESET}\n"
+        printf "    Add to your docker run command: ${BOLD}-p 9876:9876${RESET}\n"
+        printf "    Or add to docker-compose.yml:\n"
+        printf "      ports:\n"
+        printf "        - \"9876:9876\"\n\n"
+        printf "  ${BOLD}Option B: Use socat for port forwarding (no container restart):${RESET}\n"
+        printf "    On host: ${BOLD}socat TCP-LISTEN:9876,fork,reuseaddr EXEC:\"docker exec -i ${CONTAINER_NAME} socat - TCP:127.0.0.1:9876\"${RESET}\n"
+        printf "    (Requires socat on both host and container)\n\n"
+        printf "  ${BOLD}Option C: Run TUI inside container:${RESET}\n"
+        printf "    ${BOLD}docker exec -it ${CONTAINER_NAME} clawmon-tui${RESET}\n\n"
+    fi
+
+    printf "  After container restart:\n"
+    printf "    ${BOLD}$(basename "$0") --mode docker --container-name ${CONTAINER_NAME}${RESET}  (re-install)\n"
+    printf "    Or add clawmon-bootstrap.sh to container entrypoint\n\n"
 }
 
 # --- Main ---
