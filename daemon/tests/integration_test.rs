@@ -73,7 +73,7 @@ async fn test_health_endpoint() {
         .unwrap();
     let json: serde_json::Value = serde_json::from_slice(&body).unwrap();
     assert_eq!(json["data"]["status"], "ok");
-    assert_eq!(json["data"]["version"], "0.1.0");
+    assert_eq!(json["data"]["version"], env!("CARGO_PKG_VERSION"));
     assert!(json["timestamp"].is_string());
 }
 

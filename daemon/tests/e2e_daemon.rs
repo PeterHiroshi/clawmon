@@ -76,7 +76,7 @@ async fn e2e_health_check() {
     assert_eq!(resp.status(), 200);
     let json: serde_json::Value = resp.json().await.unwrap();
     assert_eq!(json["data"]["status"], "ok");
-    assert_eq!(json["data"]["version"], "0.1.0");
+    assert_eq!(json["data"]["version"], env!("CARGO_PKG_VERSION"));
     assert!(json["data"]["uptime_seconds"].as_u64().is_some());
     assert!(json["timestamp"].is_string());
 
