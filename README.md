@@ -38,14 +38,41 @@ When running AI agents across multiple workspaces, visibility into what's happen
 - **Rust daemon** (`daemon/`) — collects data from the filesystem, git repos, and system processes. Serves a JSON REST API with Server-Sent Events for real-time updates.
 - **Go TUI** (`tui/`) — connects to the daemon, renders a tabbed dashboard with live refresh and keyboard navigation.
 
-## Prerequisites
+## Installation
 
-- **Rust** 1.82+ (with cargo)
-- **Go** 1.23+
-- **Git** (for git status collection)
-- **Make** (for build commands)
+### Quick Install (recommended)
 
-## Build from Source
+```bash
+curl -fsSL https://raw.githubusercontent.com/PeterHiroshi/clawmon/main/scripts/install.sh | bash
+```
+
+This auto-detects your OS/architecture, downloads the latest release, and installs to `~/.local/bin/`.
+
+### OpenClaw Integration
+
+#### Bare Metal (OpenClaw on host)
+
+```bash
+clawmon-integrate --mode bare-metal
+```
+
+Auto-detects your OpenClaw workspace, creates a systemd service for the daemon, and adds a `clawmon` shell alias.
+
+#### Docker (OpenClaw in container)
+
+```bash
+clawmon-integrate --mode docker --container-name <your-container>
+```
+
+Copies binaries into the container, starts the daemon, and provides TUI access instructions.
+
+### Binary Releases
+
+Download pre-built binaries from [GitHub Releases](https://github.com/PeterHiroshi/clawmon/releases). Available for linux-amd64, linux-arm64, macos-amd64, and macos-arm64.
+
+### Build from Source
+
+Prerequisites: Rust 1.82+, Go 1.23+, Git, Make
 
 ```bash
 git clone https://github.com/PeterHiroshi/clawmon.git
@@ -62,17 +89,17 @@ This builds:
 1. **Start the daemon** (in one terminal):
 
 ```bash
+clawmon-daemon
+# or from source:
 make run-daemon
-# or directly:
-cd daemon && cargo run --release
 ```
 
 2. **Start the TUI** (in another terminal):
 
 ```bash
+clawmon-tui
+# or from source:
 make run-tui
-# or directly:
-cd tui && go run ./cmd/clawmon-tui
 ```
 
 The TUI connects to the daemon at `http://127.0.0.1:9876` by default and begins displaying real-time data.
