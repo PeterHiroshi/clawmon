@@ -269,4 +269,7 @@ SYSTEMD
     info "Manage with: systemctl --user {start|stop|status} clawmon-daemon"
 }
 
-main "$@"
+# Allow sourcing for testing without executing main
+if [ "${CLAWMON_SOURCED:-}" != "1" ]; then
+    main "$@"
+fi

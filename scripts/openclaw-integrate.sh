@@ -391,9 +391,12 @@ TOML"
 
 # --- Main ---
 
-parse_args "$@"
+# Allow sourcing for testing without executing
+if [ "${CLAWMON_SOURCED:-}" != "1" ]; then
+    parse_args "$@"
 
-case "${MODE}" in
-    bare-metal) integrate_bare_metal ;;
-    docker)     integrate_docker ;;
-esac
+    case "${MODE}" in
+        bare-metal) integrate_bare_metal ;;
+        docker)     integrate_docker ;;
+    esac
+fi

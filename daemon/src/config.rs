@@ -195,6 +195,25 @@ mod tests {
     }
 
     #[test]
+    fn test_version_is_valid_semver() {
+        // VERSION should be a valid semver string from Cargo.toml
+        let parts: Vec<&str> = VERSION.split('.').collect();
+        assert_eq!(parts.len(), 3, "VERSION should have 3 parts: {}", VERSION);
+        for part in &parts {
+            part.parse::<u32>()
+                .unwrap_or_else(|_| panic!("VERSION part '{}' should be numeric", part));
+        }
+    }
+
+    #[test]
+    fn test_clap_version_flag() {
+        // Verify clap recognizes --version
+        use clap::CommandFactory;
+        let cmd = CliArgs::command();
+        assert!(cmd.get_version().is_some(), "CLI should have version set");
+    }
+
+    #[test]
     fn test_resolve_workspace_explicit_path() {
         let tmp = TempDir::new().unwrap();
         let path = tmp.path().to_str().unwrap();
