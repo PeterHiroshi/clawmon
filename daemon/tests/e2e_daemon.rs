@@ -248,6 +248,56 @@ async fn e2e_activity_endpoint() {
 }
 
 #[tokio::test]
+async fn e2e_system_endpoint() {
+    let tmp = TempDir::new().unwrap();
+    let proj = tmp.path().join("sysproj");
+    fs::create_dir_all(&proj).unwrap();
+
+    let (base_url, handle) = start_daemon(vec![proj]).await;
+    let client = reqwest::Client::new();
+
+    let resp = client
+        .get(format!("{}/api/v1/workspaces/sysproj/system", base_url))
+        .send()
+        .await
+        .unwrap();
+
+    assert_eq!(resp.status(), 200);
+    let json: serde_json::Value = resp.json().await.unwrap();
+    let data = &json["data"];
+
+    // CPU
+    assert!(data["cpu"]["core_count"].as_u64().unwrap() > 0);
+    assert!(data["cpu"]["model"].is_string());
+    assert!(data["cpu"]["usage_percent"].is_number());
+    assert!(data["cpu"]["per_core_usage"].is_array());
+    assert!(data["cpu"]["load_avg_1m"].is_number());
+
+    // Memory
+    assert!(data["memory"]["total_bytes"].as_u64().unwrap() > 0);
+    assert!(data["memory"]["used_bytes"].is_number());
+    assert!(data["memory"]["available_bytes"].is_number());
+    assert!(data["memory"]["usage_percent"].is_number());
+
+    // Swap
+    assert!(data["swap"]["total_bytes"].is_number());
+    assert!(data["swap"]["usage_percent"].is_number());
+
+    // Disks
+    assert!(data["disks"].is_array());
+
+    // GPUs (may be empty)
+    assert!(data["gpus"].is_array());
+
+    // Uptime
+    assert!(data["uptime_seconds"].as_u64().unwrap() > 0);
+    assert!(data["collected_at"].is_string());
+    assert!(json["timestamp"].is_string());
+
+    handle.abort();
+}
+
+#[tokio::test]
 async fn e2e_sse_endpoint_connects() {
     let (base_url, handle) = start_daemon(vec![]).await;
     let client = reqwest::Client::new();
