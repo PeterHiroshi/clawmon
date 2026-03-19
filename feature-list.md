@@ -57,3 +57,16 @@
 | 4.3 | System tab with color-coded bars | 🟢 | feature/system-resources | Tab 5, thresholds: green/yellow/orange/red |
 | 4.4 | Dashboard system card | 🟢 | feature/system-resources | CPU + RAM mini-bars, GPU status |
 | 4.5 | Unit + integration + E2E tests | 🟢 | feature/system-resources | Rust + Go tests, full coverage |
+
+## Phase 5 — Release Packaging & Documentation
+
+| # | Feature | Status | Branch | Notes |
+|---|---------|--------|--------|-------|
+| 5.1 | Version command (--version) for both binaries | 🟢 | feature/release-packaging | Cargo.toml version + Go ldflags |
+| 5.2 | GitHub Actions release workflow (4 platform tarballs) | 🟢 | feature/release-packaging | v* tag trigger, SHA256 checksums |
+| 5.3 | One-line install script (curl pipe bash) | 🟢 | feature/release-packaging | OS/arch detect, curl/wget, NO_COLOR |
+| 5.4 | OpenClaw integration script (bare-metal mode) | 🟢 | feature/release-packaging | Systemd service, shell alias |
+| 5.5 | OpenClaw integration script (docker mode) | 🟢 | feature/release-packaging | Container copy, workspace detect |
+| 5.6 | Example config + README update | 🟢 | feature/release-packaging | config.example.toml, install docs |
+| 5.7 | Static linking for Docker (musl target) | 🔴 | — | Future: musl cross-compile |
+| 5.8 | Tests for install/integrate scripts | 🟢 | feature/release-packaging | Version, YAML validation, script logic |
