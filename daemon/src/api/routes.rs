@@ -20,6 +20,10 @@ pub fn build_router(state: AppState) -> Router {
         )
         .route("/api/v1/workspaces/{id}/env", get(handlers::workspace_env))
         .route(
+            "/api/v1/workspaces/{id}/system",
+            get(handlers::workspace_system),
+        )
+        .route(
             "/api/v1/workspaces/{id}/activity",
             get(handlers::workspace_activity),
         )
