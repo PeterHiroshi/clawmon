@@ -51,9 +51,7 @@ fn setup_git_repo(dir: &std::path::Path) {
     let file_path = dir.join("file.txt");
     fs::write(&file_path, "content").unwrap();
     let mut index = repo.index().unwrap();
-    index
-        .add_path(std::path::Path::new("file.txt"))
-        .unwrap();
+    index.add_path(std::path::Path::new("file.txt")).unwrap();
     index.write().unwrap();
     let tree_id = index.write_tree().unwrap();
     let tree = repo.find_tree(tree_id).unwrap();
@@ -187,10 +185,12 @@ async fn e2e_workspace_not_found() {
 
     assert_eq!(resp.status(), 404);
     let json: serde_json::Value = resp.json().await.unwrap();
-    assert!(json["error"]
-        .as_str()
-        .unwrap()
-        .contains("workspace not found"));
+    assert!(
+        json["error"]
+            .as_str()
+            .unwrap()
+            .contains("workspace not found")
+    );
 
     handle.abort();
 }
@@ -312,7 +312,12 @@ async fn e2e_sse_endpoint_connects() {
 
     assert_eq!(resp.status(), 200);
     // Content type should be text/event-stream
-    let content_type = resp.headers().get("content-type").unwrap().to_str().unwrap();
+    let content_type = resp
+        .headers()
+        .get("content-type")
+        .unwrap()
+        .to_str()
+        .unwrap();
     assert!(content_type.contains("text/event-stream"));
 
     handle.abort();

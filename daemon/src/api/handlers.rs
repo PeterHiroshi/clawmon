@@ -173,7 +173,9 @@ pub async fn workspace_processes(
         Ok(processes) => Ok(Json(ApiResponse::new(processes))),
         Err(err) => {
             tracing::warn!("process collector failed for workspace {}: {}", id, err);
-            Ok(Json(ApiResponse::new(Vec::<crate::models::ProcessInfo>::new())))
+            Ok(Json(ApiResponse::new(
+                Vec::<crate::models::ProcessInfo>::new(),
+            )))
         }
     }
 }

@@ -30,9 +30,7 @@ fn setup_git_repo(dir: &std::path::Path) {
     let file_path = dir.join("README.md");
     fs::write(&file_path, "# Test").unwrap();
     let mut index = repo.index().unwrap();
-    index
-        .add_path(std::path::Path::new("README.md"))
-        .unwrap();
+    index.add_path(std::path::Path::new("README.md")).unwrap();
     index.write().unwrap();
     let tree_id = index.write_tree().unwrap();
     let tree = repo.find_tree(tree_id).unwrap();
@@ -191,7 +189,12 @@ async fn test_workspace_not_found() {
         .await
         .unwrap();
     let json: serde_json::Value = serde_json::from_slice(&body).unwrap();
-    assert!(json["error"].as_str().unwrap().contains("workspace not found"));
+    assert!(
+        json["error"]
+            .as_str()
+            .unwrap()
+            .contains("workspace not found")
+    );
 }
 
 #[tokio::test]
