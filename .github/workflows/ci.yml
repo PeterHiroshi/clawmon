@@ -1,0 +1,60 @@
+name: CI
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main, develop]
+
+jobs:
+  build-and-test:
+    strategy:
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          components: clippy, rustfmt
+
+      - name: Rust cache
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: daemon
+
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.23'
+          cache-dependency-path: tui/go.sum
+
+      - name: Build daemon
+        run: cd daemon && cargo build --release
+
+      - name: Build TUI
+        run: cd tui && go build -o clawmon-tui ./cmd/clawmon-tui
+
+      - name: Lint daemon
+        run: cd daemon && cargo clippy -- -W warnings
+
+      - name: Lint TUI
+        run: cd tui && go vet ./...
+
+      - name: Test daemon
+        run: cd daemon && cargo test
+
+      - name: Test TUI
+        run: cd tui && go test ./...
+
+      - name: Check Rust format
+        run: cd daemon && cargo fmt -- --check
+
+      - name: Check Go format
+        run: |
+          cd tui
+          test -z "$(gofmt -l .)"

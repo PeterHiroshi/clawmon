@@ -1,4 +1,4 @@
-.PHONY: build build-daemon build-tui test test-daemon test-tui test-e2e lint run-daemon run-tui clean
+.PHONY: build build-daemon build-tui test test-daemon test-tui test-e2e lint run-daemon run-tui clean build-linux build-macos
 
 # Build
 build: build-daemon build-tui
@@ -8,6 +8,23 @@ build-daemon:
 
 build-tui:
 	cd tui && go build -o clawmon-tui ./cmd/clawmon-tui
+
+# Cross-platform builds
+build-linux: build-linux-daemon build-linux-tui
+
+build-linux-daemon:
+	cd daemon && cargo build --release --target x86_64-unknown-linux-gnu
+
+build-linux-tui:
+	cd tui && GOOS=linux GOARCH=amd64 go build -o clawmon-tui-linux ./cmd/clawmon-tui
+
+build-macos: build-macos-daemon build-macos-tui
+
+build-macos-daemon:
+	cd daemon && cargo build --release --target x86_64-apple-darwin
+
+build-macos-tui:
+	cd tui && GOOS=darwin GOARCH=amd64 go build -o clawmon-tui-macos ./cmd/clawmon-tui
 
 # Test
 test: test-daemon test-tui
@@ -45,4 +62,4 @@ run-tui:
 # Clean
 clean:
 	cd daemon && cargo clean
-	rm -f tui/clawmon-tui
+	rm -f tui/clawmon-tui tui/clawmon-tui-linux tui/clawmon-tui-macos

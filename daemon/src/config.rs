@@ -65,7 +65,7 @@ impl Config {
     /// Priority: CLI args > config file > defaults.
     pub fn from_args(args: &CliArgs) -> Result<Self> {
         let config_file = config_file::load_config_file()
-            .unwrap_or_else(|_| None)
+            .unwrap_or(None)
             .unwrap_or_default();
 
         Self::from_args_with_config(args, &config_file)

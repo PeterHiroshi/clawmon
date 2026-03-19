@@ -1,7 +1,7 @@
 //! Configuration file support for clawmon (~/.clawmon/config.toml).
 
 use serde::Deserialize;
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 
 use crate::error::{DaemonError, Result};
 
@@ -136,15 +136,15 @@ pub fn create_default_config() -> Result<Option<PathBuf>> {
 
 /// Expands a tilde prefix in a path string to the user's home directory.
 pub fn expand_tilde(path: &str) -> PathBuf {
-    if let Some(rest) = path.strip_prefix("~/") {
-        if let Some(home) = home_dir() {
-            return home.join(rest);
-        }
+    if let Some(rest) = path.strip_prefix("~/")
+        && let Some(home) = home_dir()
+    {
+        return home.join(rest);
     }
-    if path == "~" {
-        if let Some(home) = home_dir() {
-            return home;
-        }
+    if path == "~"
+        && let Some(home) = home_dir()
+    {
+        return home;
     }
     PathBuf::from(path)
 }
