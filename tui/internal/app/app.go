@@ -2,9 +2,12 @@
 package app
 
 import (
+	"fmt"
+	"strings"
 	"time"
 
 	tea "github.com/charmbracelet/bubbletea"
+	"github.com/charmbracelet/lipgloss"
 
 	"github.com/PeterHiroshi/clawmon/tui/internal/client"
 	"github.com/PeterHiroshi/clawmon/tui/internal/models"
@@ -443,6 +446,121 @@ func (m Model) View() string {
 		return "Loading..."
 	}
 
-	// Placeholder — will be implemented in Task 7
-	return "clawmon TUI"
+	var sections []string
+
+	// Tab bar
+	tabBar := views.RenderTabBar(m.ActiveTab, m.Width)
+	sections = append(sections, tabBar)
+
+	// Content area height (minus tab bar and status bar)
+	contentHeight := m.Height - 4
+
+	// Help overlay
+	if m.ShowHelp {
+		sections = append(sections, m.renderHelp())
+		sections = append(sections, m.renderStatusBar())
+		return strings.Join(sections, "\n")
+	}
+
+	// Detail overlay
+	if m.ShowDetail {
+		sections = append(sections, m.renderDetail())
+		sections = append(sections, m.renderStatusBar())
+		return strings.Join(sections, "\n")
+	}
+
+	// Loading state
+	if m.Loading["init"] {
+		sections = append(sections, "\n  Loading...")
+		sections = append(sections, m.renderStatusBar())
+		return strings.Join(sections, "\n")
+	}
+
+	// Tab content
+	switch m.ActiveTab {
+	case TabDashboard:
+		wsPath := ""
+		if len(m.Workspaces) > 0 && m.SelectedWorkspace < len(m.Workspaces) {
+			wsPath = m.Workspaces[m.SelectedWorkspace].Path
+		}
+		sections = append(sections, views.RenderDashboard(views.DashboardData{
+			WorkspacePath: wsPath,
+			DaemonOnline:  m.DaemonOnline,
+			Uptime:        m.Uptime,
+			GitStatus:     m.GitStatus,
+			Tasks:         m.Tasks,
+			Processes:     m.Processes,
+			EnvHealth:     m.EnvHealth,
+			Activity:      m.Activity,
+		}, m.Width, contentHeight))
+
+	case TabTasks:
+		sections = append(sections, views.RenderTasks(m.Tasks, m.SelectedTask, m.Width, contentHeight))
+
+	case TabGit:
+		sections = append(sections, views.RenderGit(m.GitStatus, m.SelectedCommit, m.Width, contentHeight))
+
+	case TabActivity:
+		sections = append(sections, views.RenderActivity(m.Activity, m.SelectedActivity, m.Width, contentHeight))
+	}
+
+	// Status bar
+	sections = append(sections, m.renderStatusBar())
+
+	return strings.Join(sections, "\n")
+}
+
+func (m Model) renderStatusBar() string {
+	dot := views.ConnectionDot(m.DaemonOnline)
+	refreshStr := "never"
+	if !m.LastRefresh.IsZero() {
+		refreshStr = views.FormatTimestamp(m.LastRefresh)
+	}
+
+	wsName := "—"
+	if len(m.Workspaces) > 0 && m.SelectedWorkspace < len(m.Workspaces) {
+		wsName = m.Workspaces[m.SelectedWorkspace].Name
+	}
+
+	tabName := views.TabNames[m.ActiveTab]
+
+	left := fmt.Sprintf(" %s daemon  %s  refreshed: %s", dot, wsName, refreshStr)
+	right := fmt.Sprintf("%s  ? help  q quit ", tabName)
+
+	gap := m.Width - lipgloss.Width(left) - lipgloss.Width(right)
+	if gap < 1 {
+		gap = 1
+	}
+
+	return views.StatusBarStyle.Width(m.Width).Render(left + strings.Repeat(" ", gap) + right)
+}
+
+func (m Model) renderHelp() string {
+	help := `
+  Key Bindings
+
+  Tab / Shift+Tab   Switch tabs
+  1-4               Jump to tab
+  j/k               Navigate up/down
+  Enter             Open detail view
+  Esc               Close detail/help
+  r                 Refresh data
+  ?                 Toggle help
+  q                 Quit
+`
+	return views.HelpStyle.Render(help)
+}
+
+func (m Model) renderDetail() string {
+	switch m.ActiveTab {
+	case TabTasks:
+		if m.SelectedTask < len(m.Tasks) {
+			return views.RenderTaskDetail(m.Tasks[m.SelectedTask], m.Width, m.Height)
+		}
+	case TabGit:
+		if m.GitStatus != nil && m.SelectedCommit < len(m.GitStatus.RecentCommits) {
+			return views.RenderCommitDetail(m.GitStatus.RecentCommits[m.SelectedCommit], m.Width, m.Height)
+		}
+	}
+	return ""
 }

@@ -28,7 +28,7 @@
 |---|---------|--------|--------|-------|
 | 2.1 | Project scaffolding (go.mod, dir structure, Makefile integration) | 🟢 | feature/phase2-tui | go.mod, models, main.go stub, 10 tests |
 | 2.2 | Daemon HTTP client (all endpoints, SSE subscription) | 🟢 | feature/phase2-tui | 14 tests (10 REST + 4 SSE) |
-| 2.3 | App shell (tabs, navigation, key bindings, status bar) | 🔴 | — | — |
+| 2.3 | App shell (tabs, navigation, key bindings, status bar) | 🟢 | feature/phase2-tui | Bubble Tea model, Update, View, tab bar, status bar, help overlay |
 | 2.4 | Dashboard tab (overview: workspace count, task summary, git summary) | 🔴 | — | — |
 | 2.5 | Tasks tab (table: task name, status, duration, model, teams mode) | 🔴 | — | — |
 | 2.6 | Git tab (sync status, recent commits, ahead/behind, dirty files) | 🔴 | — | — |

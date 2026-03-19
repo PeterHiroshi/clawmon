@@ -346,6 +346,83 @@ func TestSseMsgNoWorkspaces(t *testing.T) {
 	assert.Nil(t, cmd)
 }
 
+func TestViewRendersTabBar(t *testing.T) {
+	m := NewModel(defaultMock())
+	m.Width = 80
+	m.Height = 24
+	m.Workspaces = []models.WorkspaceInfo{{ID: "alpha", Path: "/ws/alpha", Name: "Alpha"}}
+
+	view := m.View()
+	assert.Contains(t, view, "Dashboard")
+	assert.Contains(t, view, "Tasks")
+	assert.Contains(t, view, "Git")
+	assert.Contains(t, view, "Activity")
+}
+
+func TestViewStatusBar(t *testing.T) {
+	m := NewModel(defaultMock())
+	m.Width = 80
+	m.Height = 24
+	m.DaemonOnline = true
+	m.Workspaces = []models.WorkspaceInfo{{ID: "alpha", Path: "/ws/alpha", Name: "Alpha"}}
+
+	view := m.View()
+	assert.Contains(t, view, "daemon")
+	assert.Contains(t, view, "Alpha")
+}
+
+func TestViewLoadingState(t *testing.T) {
+	m := NewModel(defaultMock())
+	m.Width = 80
+	m.Height = 24
+
+	view := m.View()
+	assert.Contains(t, view, "Loading")
+}
+
+func TestViewHelpOverlay(t *testing.T) {
+	m := NewModel(defaultMock())
+	m.Width = 80
+	m.Height = 24
+	m.ShowHelp = true
+
+	view := m.View()
+	assert.Contains(t, view, "Key Bindings")
+	assert.Contains(t, view, "Tab")
+}
+
+func TestViewDetailOverlay(t *testing.T) {
+	m := NewModel(defaultMock())
+	m.Width = 80
+	m.Height = 24
+	m.ShowDetail = true
+	m.ActiveTab = TabTasks
+	m.Tasks = []models.TaskInfo{{Name: "detail-task", Status: models.TaskStatusDone, TaskDir: "/tmp"}}
+
+	view := m.View()
+	assert.Contains(t, view, "detail-task")
+}
+
+func TestViewAllTabs(t *testing.T) {
+	m := NewModel(defaultMock())
+	m.Width = 80
+	m.Height = 24
+	m.Workspaces = []models.WorkspaceInfo{{ID: "alpha", Path: "/ws/alpha", Name: "Alpha"}}
+	m.GitStatus = &models.GitStatus{Branch: "main", IsClean: true}
+
+	for tab := 0; tab < TabCount; tab++ {
+		m.ActiveTab = tab
+		view := m.View()
+		assert.NotEmpty(t, view, "tab %d should render", tab)
+	}
+}
+
+func TestViewZeroWidth(t *testing.T) {
+	m := NewModel(defaultMock())
+	view := m.View()
+	assert.Equal(t, "Loading...", view)
+}
+
 func TestErrorStates(t *testing.T) {
 	m := NewModel(defaultMock())
 
