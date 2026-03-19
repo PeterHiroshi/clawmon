@@ -26,6 +26,7 @@ type DaemonClient interface {
 	GetProcesses(id string) ([]models.ProcessInfo, error)
 	GetEnvHealth(id string) (*models.EnvHealth, error)
 	GetActivity(id string) ([]models.ActivityEvent, error)
+	GetSystemResources(id string) (*models.SystemResources, error)
 	SubscribeEvents(ctx context.Context) (<-chan models.SseEvent, error)
 }
 
@@ -123,6 +124,11 @@ func (c *HTTPClient) GetActivity(id string) ([]models.ActivityEvent, error) {
 		return nil, err
 	}
 	return *result, nil
+}
+
+// GetSystemResources returns system resource metrics for a workspace.
+func (c *HTTPClient) GetSystemResources(id string) (*models.SystemResources, error) {
+	return apiGet[models.SystemResources](c, "/workspaces/"+id+"/system")
 }
 
 // SubscribeEvents opens an SSE connection to the daemon.

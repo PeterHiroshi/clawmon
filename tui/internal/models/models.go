@@ -137,6 +137,63 @@ type ActivityEvent struct {
 	Description string       `json:"description"`
 }
 
+// SystemResources contains host system resource metrics.
+type SystemResources struct {
+	CPU            CpuInfo    `json:"cpu"`
+	Memory         MemoryInfo `json:"memory"`
+	Swap           SwapInfo   `json:"swap"`
+	Disks          []DiskInfo `json:"disks"`
+	GPUs           []GpuInfo  `json:"gpus"`
+	UptimeSeconds  uint64     `json:"uptime_seconds"`
+	CollectedAt    string     `json:"collected_at"`
+}
+
+// CpuInfo contains CPU identification and usage metrics.
+type CpuInfo struct {
+	Model        string    `json:"model"`
+	CoreCount    int       `json:"core_count"`
+	UsagePercent float32   `json:"usage_percent"`
+	PerCoreUsage []float32 `json:"per_core_usage"`
+	LoadAvg1m    float64   `json:"load_avg_1m"`
+	LoadAvg5m    float64   `json:"load_avg_5m"`
+	LoadAvg15m   float64   `json:"load_avg_15m"`
+}
+
+// MemoryInfo contains RAM usage metrics.
+type MemoryInfo struct {
+	TotalBytes     uint64  `json:"total_bytes"`
+	UsedBytes      uint64  `json:"used_bytes"`
+	AvailableBytes uint64  `json:"available_bytes"`
+	UsagePercent   float32 `json:"usage_percent"`
+}
+
+// SwapInfo contains swap usage metrics.
+type SwapInfo struct {
+	TotalBytes   uint64  `json:"total_bytes"`
+	UsedBytes    uint64  `json:"used_bytes"`
+	UsagePercent float32 `json:"usage_percent"`
+}
+
+// DiskInfo contains filesystem usage metrics.
+type DiskInfo struct {
+	MountPoint     string  `json:"mount_point"`
+	Filesystem     string  `json:"filesystem"`
+	TotalBytes     uint64  `json:"total_bytes"`
+	UsedBytes      uint64  `json:"used_bytes"`
+	AvailableBytes uint64  `json:"available_bytes"`
+	UsagePercent   float32 `json:"usage_percent"`
+}
+
+// GpuInfo contains GPU metrics (from nvidia-smi).
+type GpuInfo struct {
+	Name               string  `json:"name"`
+	MemoryUsedMB       uint64  `json:"memory_used_mb"`
+	MemoryTotalMB      uint64  `json:"memory_total_mb"`
+	MemoryUsagePercent float32 `json:"memory_usage_percent"`
+	UtilizationPercent float32 `json:"utilization_percent"`
+	TemperatureCelsius float32 `json:"temperature_celsius"`
+}
+
 // SseEvent represents a server-sent event from the daemon.
 type SseEvent struct {
 	EventType   string      `json:"event_type"`

@@ -191,6 +191,87 @@ func TestActivityEventDeserialization(t *testing.T) {
 	assert.Equal(t, expected, event.Timestamp)
 }
 
+func TestSystemResourcesDeserialization(t *testing.T) {
+	raw := `{
+		"data": {
+			"cpu": {
+				"model": "Intel i7-12700K",
+				"core_count": 16,
+				"usage_percent": 48.2,
+				"per_core_usage": [50.0, 46.4],
+				"load_avg_1m": 2.15,
+				"load_avg_5m": 1.87,
+				"load_avg_15m": 1.42
+			},
+			"memory": {
+				"total_bytes": 16000000000,
+				"used_bytes": 12400000000,
+				"available_bytes": 3600000000,
+				"usage_percent": 78.5
+			},
+			"swap": {
+				"total_bytes": 10000000000,
+				"used_bytes": 820000000,
+				"usage_percent": 8.2
+			},
+			"disks": [
+				{
+					"mount_point": "/",
+					"filesystem": "ext4",
+					"total_bytes": 200000000000,
+					"used_bytes": 136600000000,
+					"available_bytes": 63400000000,
+					"usage_percent": 68.3
+				}
+			],
+			"gpus": [
+				{
+					"name": "NVIDIA RTX 4090",
+					"memory_used_mb": 21900,
+					"memory_total_mb": 24000,
+					"memory_usage_percent": 91.2,
+					"utilization_percent": 82.5,
+					"temperature_celsius": 72.0
+				}
+			],
+			"uptime_seconds": 86400,
+			"collected_at": "2026-03-18T19:00:00Z"
+		},
+		"timestamp": "2026-03-18T19:00:00Z"
+	}`
+	var resp ApiResponse[SystemResources]
+	err := json.Unmarshal([]byte(raw), &resp)
+	require.NoError(t, err)
+	assert.Equal(t, "Intel i7-12700K", resp.Data.CPU.Model)
+	assert.Equal(t, 16, resp.Data.CPU.CoreCount)
+	assert.InDelta(t, 48.2, float64(resp.Data.CPU.UsagePercent), 0.1)
+	assert.Len(t, resp.Data.CPU.PerCoreUsage, 2)
+	assert.InDelta(t, 78.5, float64(resp.Data.Memory.UsagePercent), 0.1)
+	assert.Equal(t, uint64(16000000000), resp.Data.Memory.TotalBytes)
+	require.Len(t, resp.Data.Disks, 1)
+	assert.Equal(t, "/", resp.Data.Disks[0].MountPoint)
+	require.Len(t, resp.Data.GPUs, 1)
+	assert.Equal(t, "NVIDIA RTX 4090", resp.Data.GPUs[0].Name)
+	assert.Equal(t, uint64(86400), resp.Data.UptimeSeconds)
+}
+
+func TestSystemResourcesNoGPU(t *testing.T) {
+	raw := `{
+		"cpu": {"model": "Unknown", "core_count": 1, "usage_percent": 0, "per_core_usage": [], "load_avg_1m": 0, "load_avg_5m": 0, "load_avg_15m": 0},
+		"memory": {"total_bytes": 0, "used_bytes": 0, "available_bytes": 0, "usage_percent": 0},
+		"swap": {"total_bytes": 0, "used_bytes": 0, "usage_percent": 0},
+		"disks": [],
+		"gpus": [],
+		"uptime_seconds": 0,
+		"collected_at": "2026-03-18T19:00:00Z"
+	}`
+	var resources SystemResources
+	err := json.Unmarshal([]byte(raw), &resources)
+	require.NoError(t, err)
+	assert.Empty(t, resources.GPUs)
+	assert.Empty(t, resources.Disks)
+}
+
 func TestSseEventDeserialization(t *testing.T) {
 	raw := `{
 		"event_type": "git_status",

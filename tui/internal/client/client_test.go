@@ -211,6 +211,62 @@ func TestGetActivity(t *testing.T) {
 	assert.Equal(t, models.ActivityGitCommit, events[0].EventType)
 }
 
+func TestGetSystemResources(t *testing.T) {
+	server := newMockServer(t, map[string]http.HandlerFunc{
+		"/workspaces/alpha/system": func(w http.ResponseWriter, r *http.Request) {
+			w.Header().Set("Content-Type", "application/json")
+			w.Write(wrapResponse(t, map[string]interface{}{
+				"cpu": map[string]interface{}{
+					"model":          "Test CPU",
+					"core_count":     4,
+					"usage_percent":  50.0,
+					"per_core_usage": []float32{45.0, 55.0, 48.0, 52.0},
+					"load_avg_1m":    1.5,
+					"load_avg_5m":    1.2,
+					"load_avg_15m":   0.9,
+				},
+				"memory": map[string]interface{}{
+					"total_bytes":     16000000000,
+					"used_bytes":      8000000000,
+					"available_bytes": 8000000000,
+					"usage_percent":   50.0,
+				},
+				"swap": map[string]interface{}{
+					"total_bytes":   4000000000,
+					"used_bytes":    100000000,
+					"usage_percent": 2.5,
+				},
+				"disks": []map[string]interface{}{
+					{
+						"mount_point":     "/",
+						"filesystem":      "ext4",
+						"total_bytes":     500000000000,
+						"used_bytes":      250000000000,
+						"available_bytes": 250000000000,
+						"usage_percent":   50.0,
+					},
+				},
+				"gpus":           []interface{}{},
+				"uptime_seconds": 86400,
+				"collected_at":   "2026-03-18T19:00:00Z",
+			}))
+		},
+	})
+	defer server.Close()
+
+	client := NewHTTPClient(server.URL)
+	sys, err := client.GetSystemResources("alpha")
+	require.NoError(t, err)
+	assert.Equal(t, "Test CPU", sys.CPU.Model)
+	assert.Equal(t, 4, sys.CPU.CoreCount)
+	assert.InDelta(t, 50.0, float64(sys.CPU.UsagePercent), 0.1)
+	assert.Equal(t, uint64(16000000000), sys.Memory.TotalBytes)
+	require.Len(t, sys.Disks, 1)
+	assert.Equal(t, "/", sys.Disks[0].MountPoint)
+	assert.Empty(t, sys.GPUs)
+	assert.Equal(t, uint64(86400), sys.UptimeSeconds)
+}
+
 func TestNotFoundError(t *testing.T) {
 	server := newMockServer(t, map[string]http.HandlerFunc{
 		"/workspaces/missing/git": func(w http.ResponseWriter, r *http.Request) {

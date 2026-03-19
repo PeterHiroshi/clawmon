@@ -28,6 +28,8 @@ type mockClient struct {
 	envErr         error
 	activity       []models.ActivityEvent
 	activityErr    error
+	systemRes      *models.SystemResources
+	systemErr      error
 }
 
 func (m *mockClient) Health() (*models.HealthResponse, error) {
@@ -50,6 +52,9 @@ func (m *mockClient) GetEnvHealth(id string) (*models.EnvHealth, error) {
 }
 func (m *mockClient) GetActivity(id string) ([]models.ActivityEvent, error) {
 	return m.activity, m.activityErr
+}
+func (m *mockClient) GetSystemResources(id string) (*models.SystemResources, error) {
+	return m.systemRes, m.systemErr
 }
 func (m *mockClient) SubscribeEvents(ctx context.Context) (<-chan models.SseEvent, error) {
 	return make(chan models.SseEvent), nil
