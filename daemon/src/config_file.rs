@@ -17,6 +17,8 @@ const DEFAULT_CONFIG_CONTENT: &str = r#"# clawmon configuration file
 
 [daemon]
 # port = 9876
+# bind = "127.0.0.1"  # Use "0.0.0.0" for Docker mode
+# mode = "standalone"  # "standalone" or "docker"
 # poll_interval = 30
 
 [daemon.workspaces]
@@ -44,6 +46,10 @@ pub struct ConfigFile {
 pub struct DaemonFileConfig {
     /// Port to listen on.
     pub port: Option<u16>,
+    /// Address to bind to (e.g., "127.0.0.1" or "0.0.0.0").
+    pub bind: Option<String>,
+    /// Running mode: "standalone" or "docker".
+    pub mode: Option<String>,
     /// Poll interval in seconds.
     pub poll_interval: Option<u64>,
     /// Workspace configuration.
@@ -264,6 +270,8 @@ port = 9999
         let config = ConfigFile {
             daemon: Some(DaemonFileConfig {
                 port: None,
+                bind: None,
+                mode: None,
                 poll_interval: None,
                 workspaces: Some(WorkspacesFileConfig {
                     paths: Some(vec!["/tmp/ws1".to_string(), "/tmp/ws2".to_string()]),

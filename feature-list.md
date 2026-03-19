@@ -70,3 +70,16 @@
 | 5.6 | Example config + README update | 🟢 | feature/release-packaging | config.example.toml, install docs |
 | 5.7 | Static linking for Docker (musl target) | 🔴 | — | Future: musl cross-compile |
 | 5.8 | Tests for install/integrate scripts | 🟢 | feature/release-packaging | Version, YAML validation, script logic |
+
+## Phase 6 — Docker Integration
+
+| # | Feature | Status | Branch | Notes |
+|---|---------|--------|--------|-------|
+| 6.1 | Daemon configurable bind address (--bind) | 🟢 | feature/docker-integration | Default 127.0.0.1, Docker 0.0.0.0 |
+| 6.2 | Daemon --mode docker flag | 🟢 | feature/docker-integration | standalone/docker, auto-sets bind |
+| 6.3 | Enhanced Docker integration script | 🟢 | feature/docker-integration | Binary verify, config, port detect, bootstrap |
+| 6.4 | Port mapping detection and guidance | 🟢 | feature/docker-integration | 3 options: remap, socat, in-container |
+| 6.5 | Container restart bootstrap hook | 🟢 | feature/docker-integration | clawmon-bootstrap.sh auto-start |
+| 6.6 | TUI-only install option (--tui-only) | 🟢 | feature/docker-integration | Skip daemon, print remote connect instructions |
+| 6.7 | Health endpoint enhancement | 🟢 | feature/docker-integration | bind_address, workspaces_count, mode fields |
+| 6.8 | Tests (bind, docker mode, install --tui-only) | 🟢 | feature/docker-integration | 100 Rust + Go + 20 script tests |

@@ -19,6 +19,8 @@ async fn start_daemon(project_dirs: Vec<PathBuf>) -> (String, tokio::task::JoinH
     let port = free_port();
     let config = Config {
         port,
+        bind: "127.0.0.1".to_string(),
+        mode: clawmon_daemon::config::DaemonMode::Standalone,
         workspace_path: PathBuf::from("/tmp/e2e-test"),
         poll_interval: Duration::from_secs(300),
         project_dirs,

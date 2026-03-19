@@ -8,6 +8,9 @@ use crate::error::{DaemonError, Result};
 /// Default daemon port.
 pub const DEFAULT_PORT: u16 = 9876;
 
+/// Default bind address.
+pub const DEFAULT_BIND: &str = "127.0.0.1";
+
 /// Default poll interval in seconds.
 pub const DEFAULT_POLL_INTERVAL_SECS: u64 = 30;
 
@@ -35,6 +38,10 @@ pub struct CliArgs {
     #[arg(long, default_value_t = DEFAULT_PORT)]
     pub port: u16,
 
+    /// Address to bind the HTTP server to.
+    #[arg(long, default_value = DEFAULT_BIND)]
+    pub bind: String,
+
     /// Workspace root path. Auto-detected from OPENCLAW_WORKSPACE env or ~/.openclaw/workspace-main.
     #[arg(long)]
     pub workspace: Option<String>,
@@ -46,6 +53,41 @@ pub struct CliArgs {
     /// Additional project directories to monitor (comma-separated).
     #[arg(long, value_delimiter = ',')]
     pub project_dirs: Vec<String>,
+
+    /// Running mode: standalone (default) or docker.
+    #[arg(long, default_value = "standalone")]
+    pub mode: String,
+}
+
+/// Daemon running mode.
+#[derive(Debug, Clone, PartialEq)]
+pub enum DaemonMode {
+    /// Standard bare-metal mode (bind to 127.0.0.1 by default).
+    Standalone,
+    /// Docker mode (bind to 0.0.0.0 by default, reported in health).
+    Docker,
+}
+
+impl DaemonMode {
+    /// Parse a mode string ("standalone" or "docker").
+    pub fn parse(s: &str) -> Result<Self> {
+        match s {
+            "standalone" => Ok(Self::Standalone),
+            "docker" => Ok(Self::Docker),
+            _ => Err(DaemonError::Config(format!(
+                "invalid mode '{}': must be 'standalone' or 'docker'",
+                s
+            ))),
+        }
+    }
+
+    /// Return the string representation.
+    pub fn as_str(&self) -> &'static str {
+        match self {
+            Self::Standalone => "standalone",
+            Self::Docker => "docker",
+        }
+    }
 }
 
 /// Resolved daemon configuration.
@@ -53,6 +95,10 @@ pub struct CliArgs {
 pub struct Config {
     /// Port to bind HTTP server.
     pub port: u16,
+    /// Address to bind HTTP server.
+    pub bind: String,
+    /// Running mode.
+    pub mode: DaemonMode,
     /// Root workspace path.
     pub workspace_path: PathBuf,
     /// Poll interval for data collection.
@@ -77,11 +123,34 @@ impl Config {
     pub fn from_args_with_config(args: &CliArgs, config_file: &ConfigFile) -> Result<Self> {
         let file_daemon = config_file.daemon.as_ref();
 
+        // Mode: CLI (if non-default) > config file > default
+        let mode_str = if args.mode != "standalone" {
+            args.mode.clone()
+        } else {
+            file_daemon
+                .and_then(|d| d.mode.clone())
+                .unwrap_or_else(|| args.mode.clone())
+        };
+        let mode = DaemonMode::parse(&mode_str)?;
+
         // Port: CLI (if non-default) > config file > default
         let port = if args.port != DEFAULT_PORT {
             args.port
         } else {
             file_daemon.and_then(|d| d.port).unwrap_or(args.port)
+        };
+
+        // Bind: CLI (if non-default) > config file > mode-based default
+        let default_bind = match mode {
+            DaemonMode::Docker => "0.0.0.0",
+            DaemonMode::Standalone => DEFAULT_BIND,
+        };
+        let bind = if args.bind != DEFAULT_BIND {
+            args.bind.clone()
+        } else {
+            file_daemon
+                .and_then(|d| d.bind.clone())
+                .unwrap_or_else(|| default_bind.to_string())
         };
 
         // Poll interval: CLI (if non-default) > config file > default
@@ -120,6 +189,8 @@ impl Config {
 
         Ok(Self {
             port,
+            bind,
+            mode,
             workspace_path,
             poll_interval: Duration::from_secs(poll_interval_secs),
             project_dirs,
@@ -257,14 +328,18 @@ mod tests {
 
         let args = CliArgs {
             port: 8080,
+            bind: "127.0.0.1".to_string(),
             workspace: Some(tmp.path().to_str().unwrap().to_string()),
             poll_interval: 15,
             project_dirs: vec![],
+            mode: "standalone".to_string(),
         };
 
         let config_file = ConfigFile::default();
         let config = Config::from_args_with_config(&args, &config_file).unwrap();
         assert_eq!(config.port, 8080);
+        assert_eq!(config.bind, "127.0.0.1");
+        assert_eq!(config.mode, DaemonMode::Standalone);
         assert_eq!(config.poll_interval, Duration::from_secs(15));
         assert_eq!(config.project_dirs.len(), 1);
     }
@@ -278,9 +353,11 @@ mod tests {
         // CLI uses defaults
         let args = CliArgs {
             port: DEFAULT_PORT,
+            bind: DEFAULT_BIND.to_string(),
             workspace: Some(tmp.path().to_str().unwrap().to_string()),
             poll_interval: DEFAULT_POLL_INTERVAL_SECS,
             project_dirs: vec![],
+            mode: "standalone".to_string(),
         };
 
         // Config file specifies non-default values
@@ -289,6 +366,7 @@ mod tests {
 [daemon]
 port = 7777
 poll_interval = 10
+bind = "0.0.0.0"
 "#,
         )
         .unwrap();
@@ -296,6 +374,7 @@ poll_interval = 10
         let config = Config::from_args_with_config(&args, &config_file).unwrap();
         assert_eq!(config.port, 7777);
         assert_eq!(config.poll_interval, Duration::from_secs(10));
+        assert_eq!(config.bind, "0.0.0.0");
     }
 
     #[test]
@@ -307,9 +386,11 @@ poll_interval = 10
         // CLI specifies non-default values
         let args = CliArgs {
             port: 5555,
+            bind: "192.168.1.1".to_string(),
             workspace: Some(tmp.path().to_str().unwrap().to_string()),
             poll_interval: 60,
             project_dirs: vec![],
+            mode: "standalone".to_string(),
         };
 
         // Config file also specifies values — CLI should win
@@ -318,12 +399,104 @@ poll_interval = 10
 [daemon]
 port = 7777
 poll_interval = 10
+bind = "0.0.0.0"
 "#,
         )
         .unwrap();
 
         let config = Config::from_args_with_config(&args, &config_file).unwrap();
         assert_eq!(config.port, 5555);
+        assert_eq!(config.bind, "192.168.1.1");
         assert_eq!(config.poll_interval, Duration::from_secs(60));
+    }
+
+    #[test]
+    fn test_docker_mode_defaults_bind_to_all_interfaces() {
+        let tmp = TempDir::new().unwrap();
+        let projects = tmp.path().join("projects");
+        std::fs::create_dir_all(projects.join("myproject/.git")).unwrap();
+
+        let args = CliArgs {
+            port: DEFAULT_PORT,
+            bind: DEFAULT_BIND.to_string(),
+            workspace: Some(tmp.path().to_str().unwrap().to_string()),
+            poll_interval: DEFAULT_POLL_INTERVAL_SECS,
+            project_dirs: vec![],
+            mode: "docker".to_string(),
+        };
+
+        let config_file = ConfigFile::default();
+        let config = Config::from_args_with_config(&args, &config_file).unwrap();
+        assert_eq!(config.mode, DaemonMode::Docker);
+        assert_eq!(config.bind, "0.0.0.0");
+    }
+
+    #[test]
+    fn test_docker_mode_explicit_bind_overrides() {
+        let tmp = TempDir::new().unwrap();
+        let projects = tmp.path().join("projects");
+        std::fs::create_dir_all(projects.join("myproject/.git")).unwrap();
+
+        let args = CliArgs {
+            port: DEFAULT_PORT,
+            bind: "10.0.0.1".to_string(),
+            workspace: Some(tmp.path().to_str().unwrap().to_string()),
+            poll_interval: DEFAULT_POLL_INTERVAL_SECS,
+            project_dirs: vec![],
+            mode: "docker".to_string(),
+        };
+
+        let config_file = ConfigFile::default();
+        let config = Config::from_args_with_config(&args, &config_file).unwrap();
+        assert_eq!(config.mode, DaemonMode::Docker);
+        assert_eq!(config.bind, "10.0.0.1");
+    }
+
+    #[test]
+    fn test_invalid_mode_returns_error() {
+        let tmp = TempDir::new().unwrap();
+        let projects = tmp.path().join("projects");
+        std::fs::create_dir_all(projects.join("myproject/.git")).unwrap();
+
+        let args = CliArgs {
+            port: DEFAULT_PORT,
+            bind: DEFAULT_BIND.to_string(),
+            workspace: Some(tmp.path().to_str().unwrap().to_string()),
+            poll_interval: DEFAULT_POLL_INTERVAL_SECS,
+            project_dirs: vec![],
+            mode: "invalid".to_string(),
+        };
+
+        let config_file = ConfigFile::default();
+        let result = Config::from_args_with_config(&args, &config_file);
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_config_file_mode_docker() {
+        let tmp = TempDir::new().unwrap();
+        let projects = tmp.path().join("projects");
+        std::fs::create_dir_all(projects.join("myproject/.git")).unwrap();
+
+        let args = CliArgs {
+            port: DEFAULT_PORT,
+            bind: DEFAULT_BIND.to_string(),
+            workspace: Some(tmp.path().to_str().unwrap().to_string()),
+            poll_interval: DEFAULT_POLL_INTERVAL_SECS,
+            project_dirs: vec![],
+            mode: "standalone".to_string(),
+        };
+
+        let config_file = config_file::parse_config(
+            r#"
+[daemon]
+mode = "docker"
+"#,
+        )
+        .unwrap();
+
+        let config = Config::from_args_with_config(&args, &config_file).unwrap();
+        assert_eq!(config.mode, DaemonMode::Docker);
+        assert_eq!(config.bind, "0.0.0.0");
     }
 }

@@ -11,9 +11,12 @@ type ApiResponse[T any] struct {
 
 // HealthResponse is returned by GET /api/v1/health.
 type HealthResponse struct {
-	Status        string `json:"status"`
-	UptimeSeconds uint64 `json:"uptime_seconds"`
-	Version       string `json:"version"`
+	Status          string `json:"status"`
+	Version         string `json:"version"`
+	UptimeSeconds   uint64 `json:"uptime_seconds"`
+	BindAddress     string `json:"bind_address"`
+	WorkspacesCount int    `json:"workspaces_count"`
+	Mode            string `json:"mode"`
 }
 
 // WorkspaceInfo describes a monitored workspace.
