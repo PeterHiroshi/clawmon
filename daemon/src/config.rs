@@ -70,7 +70,7 @@ pub enum DaemonMode {
 
 impl DaemonMode {
     /// Parse a mode string ("standalone" or "docker").
-    pub fn from_str(s: &str) -> Result<Self> {
+    pub fn parse(s: &str) -> Result<Self> {
         match s {
             "standalone" => Ok(Self::Standalone),
             "docker" => Ok(Self::Docker),
@@ -131,7 +131,7 @@ impl Config {
                 .and_then(|d| d.mode.clone())
                 .unwrap_or_else(|| args.mode.clone())
         };
-        let mode = DaemonMode::from_str(&mode_str)?;
+        let mode = DaemonMode::parse(&mode_str)?;
 
         // Port: CLI (if non-default) > config file > default
         let port = if args.port != DEFAULT_PORT {
