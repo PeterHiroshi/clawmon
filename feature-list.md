@@ -35,7 +35,7 @@
 | 2.7 | Activity tab (timeline of recent events, color-coded by type) | 🟢 | feature/phase2-tui | Vertical timeline with type icons |
 | 2.8 | Real-time updates (SSE → live refresh) | 🟢 | feature/phase2-tui | SSE subscription, targeted refresh |
 | 2.9 | Detail views (Enter on task/commit for full info) | 🟢 | feature/phase2-tui | Task detail, commit detail overlays |
-| 2.10 | Integration tests (client ↔ mock daemon) | 🔴 | — | — |
+| 2.10 | Integration tests (client ↔ mock daemon) | 🟢 | feature/phase2-tui | 12 integration tests (client + app + nav) |
 | 2.11 | E2E tests (daemon + TUI interaction) | 🔴 | — | — |
 
 ## Phase 3 — Polish & Documentation
