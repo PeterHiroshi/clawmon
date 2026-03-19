@@ -44,18 +44,18 @@ type Model struct {
 	SystemResources *models.SystemResources
 
 	// UI state
-	Loading      map[string]bool
-	Errors       map[string]error
-	DaemonOnline bool
-	Uptime       uint64
-	LastRefresh  time.Time
-	ShowHelp     bool
-	ShowDetail   bool
+	Loading       map[string]bool
+	Errors        map[string]error
+	DaemonOnline  bool
+	Uptime        uint64
+	LastRefresh   time.Time
+	ShowHelp      bool
+	ShowDetail    bool
 	DetailContent string
 
 	// Stale data tracking
-	StaleData        map[string]bool
-	LastSuccessful   map[string]time.Time
+	StaleData      map[string]bool
+	LastSuccessful map[string]time.Time
 
 	// Reconnection state
 	Reconnect *client.ReconnectState

@@ -25,13 +25,13 @@ type WorkspaceInfo struct {
 
 // GitStatus represents git sync state for a workspace.
 type GitStatus struct {
-	Branch           string      `json:"branch"`
-	IsClean          bool        `json:"is_clean"`
-	UncommittedFiles []string    `json:"uncommitted_files"`
-	Ahead            int         `json:"ahead"`
-	Behind           int         `json:"behind"`
-	LastCommit       *CommitInfo `json:"last_commit"`
-	LastPushTime     *time.Time  `json:"last_push_time"`
+	Branch           string       `json:"branch"`
+	IsClean          bool         `json:"is_clean"`
+	UncommittedFiles []string     `json:"uncommitted_files"`
+	Ahead            int          `json:"ahead"`
+	Behind           int          `json:"behind"`
+	LastCommit       *CommitInfo  `json:"last_commit"`
+	LastPushTime     *time.Time   `json:"last_push_time"`
 	RecentCommits    []CommitInfo `json:"recent_commits"`
 }
 
@@ -111,7 +111,7 @@ type HookCheck struct {
 
 // EnvHealth is the full environment health report.
 type EnvHealth struct {
-	Tools []EnvCheck `json:"tools"`
+	Tools []EnvCheck  `json:"tools"`
 	Hooks []HookCheck `json:"hooks"`
 }
 
@@ -119,14 +119,14 @@ type EnvHealth struct {
 type ActivityType string
 
 const (
-	ActivityGitCommit       ActivityType = "git_commit"
-	ActivityGitPush         ActivityType = "git_push"
-	ActivityTaskStarted     ActivityType = "task_started"
-	ActivityTaskCompleted   ActivityType = "task_completed"
-	ActivityTaskFailed      ActivityType = "task_failed"
-	ActivityProcessStarted  ActivityType = "process_started"
-	ActivityProcessStopped  ActivityType = "process_stopped"
-	ActivityFileChanged     ActivityType = "file_changed"
+	ActivityGitCommit      ActivityType = "git_commit"
+	ActivityGitPush        ActivityType = "git_push"
+	ActivityTaskStarted    ActivityType = "task_started"
+	ActivityTaskCompleted  ActivityType = "task_completed"
+	ActivityTaskFailed     ActivityType = "task_failed"
+	ActivityProcessStarted ActivityType = "process_started"
+	ActivityProcessStopped ActivityType = "process_stopped"
+	ActivityFileChanged    ActivityType = "file_changed"
 )
 
 // ActivityEvent is a single item in the activity timeline.
@@ -139,13 +139,13 @@ type ActivityEvent struct {
 
 // SystemResources contains host system resource metrics.
 type SystemResources struct {
-	CPU            CpuInfo    `json:"cpu"`
-	Memory         MemoryInfo `json:"memory"`
-	Swap           SwapInfo   `json:"swap"`
-	Disks          []DiskInfo `json:"disks"`
-	GPUs           []GpuInfo  `json:"gpus"`
-	UptimeSeconds  uint64     `json:"uptime_seconds"`
-	CollectedAt    string     `json:"collected_at"`
+	CPU           CpuInfo    `json:"cpu"`
+	Memory        MemoryInfo `json:"memory"`
+	Swap          SwapInfo   `json:"swap"`
+	Disks         []DiskInfo `json:"disks"`
+	GPUs          []GpuInfo  `json:"gpus"`
+	UptimeSeconds uint64     `json:"uptime_seconds"`
+	CollectedAt   string     `json:"collected_at"`
 }
 
 // CpuInfo contains CPU identification and usage metrics.

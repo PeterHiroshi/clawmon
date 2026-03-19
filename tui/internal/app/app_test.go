@@ -14,22 +14,22 @@ import (
 
 // mockClient implements client.DaemonClient for testing.
 type mockClient struct {
-	healthResp     *models.HealthResponse
-	healthErr      error
-	workspaces     []models.WorkspaceInfo
-	workspacesErr  error
-	gitStatus      *models.GitStatus
-	gitErr         error
-	tasks          []models.TaskInfo
-	tasksErr       error
-	processes      []models.ProcessInfo
-	processesErr   error
-	envHealth      *models.EnvHealth
-	envErr         error
-	activity       []models.ActivityEvent
-	activityErr    error
-	systemRes      *models.SystemResources
-	systemErr      error
+	healthResp    *models.HealthResponse
+	healthErr     error
+	workspaces    []models.WorkspaceInfo
+	workspacesErr error
+	gitStatus     *models.GitStatus
+	gitErr        error
+	tasks         []models.TaskInfo
+	tasksErr      error
+	processes     []models.ProcessInfo
+	processesErr  error
+	envHealth     *models.EnvHealth
+	envErr        error
+	activity      []models.ActivityEvent
+	activityErr   error
+	systemRes     *models.SystemResources
+	systemErr     error
 }
 
 func (m *mockClient) Health() (*models.HealthResponse, error) {

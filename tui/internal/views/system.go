@@ -13,9 +13,9 @@ import (
 const (
 	BarWidth = 20
 
-	ThresholdNormal   float32 = 50.0
-	ThresholdWarning  float32 = 75.0
-	ThresholdHigh     float32 = 90.0
+	ThresholdNormal  float32 = 50.0
+	ThresholdWarning float32 = 75.0
+	ThresholdHigh    float32 = 90.0
 )
 
 // Color thresholds for usage bars.
