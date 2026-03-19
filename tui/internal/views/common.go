@@ -20,7 +20,7 @@ var (
 )
 
 // Tab names for the dashboard.
-var TabNames = []string{"Dashboard", "Tasks", "Git", "Activity"}
+var TabNames = []string{"Dashboard", "Tasks", "Git", "Activity", "System"}
 
 // Constants for timing and layout.
 const (

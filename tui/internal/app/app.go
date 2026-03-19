@@ -20,7 +20,8 @@ const (
 	TabTasks     = 1
 	TabGit       = 2
 	TabActivity  = 3
-	TabCount     = 4
+	TabSystem    = 4
+	TabCount     = 5
 )
 
 // Model is the Bubble Tea model for the clawmon TUI.
@@ -35,11 +36,12 @@ type Model struct {
 	SelectedWorkspace int
 
 	// Per-tab data
-	GitStatus  *models.GitStatus
-	Tasks      []models.TaskInfo
-	Processes  []models.ProcessInfo
-	EnvHealth  *models.EnvHealth
-	Activity   []models.ActivityEvent
+	GitStatus       *models.GitStatus
+	Tasks           []models.TaskInfo
+	Processes       []models.ProcessInfo
+	EnvHealth       *models.EnvHealth
+	Activity        []models.ActivityEvent
+	SystemResources *models.SystemResources
 
 	// UI state
 	Loading      map[string]bool
@@ -124,6 +126,12 @@ type ActivityMsg struct {
 	Err    error
 }
 
+// SystemMsg carries system resource data.
+type SystemMsg struct {
+	Resources *models.SystemResources
+	Err       error
+}
+
 // TickMsg triggers a periodic refresh.
 type TickMsg time.Time
 
@@ -174,6 +182,7 @@ func (m Model) fetchWorkspaceData() tea.Cmd {
 		m.fetchProcesses(wsID),
 		m.fetchEnv(wsID),
 		m.fetchActivity(wsID),
+		m.fetchSystem(wsID),
 	)
 }
 
@@ -212,6 +221,13 @@ func (m Model) fetchActivity(id string) tea.Cmd {
 	}
 }
 
+func (m Model) fetchSystem(id string) tea.Cmd {
+	return func() tea.Msg {
+		res, err := m.Client.GetSystemResources(id)
+		return SystemMsg{Resources: res, Err: err}
+	}
+}
+
 // tickCmd returns a command that sends a TickMsg after the refresh interval.
 func tickCmd() tea.Cmd {
 	return tea.Tick(views.RefreshInterval, func(t time.Time) tea.Msg {
@@ -237,7 +253,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.Reconnect.MarkDisconnected()
 			m.Errors["health"] = msg.Err
 			// Mark all data as stale when daemon goes offline
-			for _, key := range []string{"git", "tasks", "processes", "env", "activity"} {
+			for _, key := range []string{"git", "tasks", "processes", "env", "activity", "system"} {
 				if _, ok := m.LastSuccessful[key]; ok {
 					m.StaleData[key] = true
 				}
@@ -325,6 +341,17 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 		return m, nil
 
+	case SystemMsg:
+		if msg.Err != nil {
+			m.Errors["system"] = msg.Err
+		} else {
+			m.SystemResources = msg.Resources
+			delete(m.Errors, "system")
+			delete(m.StaleData, "system")
+			m.LastSuccessful["system"] = time.Now()
+		}
+		return m, nil
+
 	case TickMsg:
 		return m, tea.Batch(
 			m.fetchHealth(),
@@ -379,6 +406,9 @@ func (m Model) handleKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		return m, nil
 	case "4":
 		m.ActiveTab = TabActivity
+		return m, nil
+	case "5":
+		m.ActiveTab = TabSystem
 		return m, nil
 
 	case "j", "down":
@@ -478,6 +508,8 @@ func (m Model) handleSseMsg(msg SseMsg) (tea.Model, tea.Cmd) {
 		return m, m.fetchProcesses(wsID)
 	case "env_update":
 		return m, m.fetchEnv(wsID)
+	case "system_update":
+		return m, m.fetchSystem(wsID)
 	default:
 		return m, m.fetchWorkspaceData()
 	}
@@ -550,6 +582,9 @@ func (m Model) View() string {
 
 	case TabActivity:
 		sections = append(sections, views.RenderActivity(m.Activity, m.SelectedActivity, m.Width, contentHeight))
+
+	case TabSystem:
+		sections = append(sections, views.RenderSystem(m.SystemResources, m.Width, contentHeight))
 	}
 
 	// Status bar
@@ -611,7 +646,7 @@ func (m Model) renderHelp() string {
   Key Bindings
 
   Tab / Shift+Tab   Switch tabs
-  1-4               Jump to tab
+  1-5               Jump to tab
   j/k               Navigate up/down
   Enter             Open detail view
   Esc               Close detail/help

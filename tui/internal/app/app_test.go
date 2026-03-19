@@ -182,6 +182,24 @@ func TestActivityMsg(t *testing.T) {
 	require.Len(t, model.Activity, 1)
 }
 
+func TestSystemMsg(t *testing.T) {
+	m := NewModel(defaultMock())
+	updated, _ := m.Update(SystemMsg{
+		Resources: &models.SystemResources{
+			CPU:    models.CpuInfo{Model: "Test CPU", CoreCount: 4, UsagePercent: 50.0},
+			Memory: models.MemoryInfo{TotalBytes: 16000000000, UsedBytes: 8000000000, AvailableBytes: 8000000000, UsagePercent: 50.0},
+		},
+	})
+	model := updated.(Model)
+	require.NotNil(t, model.SystemResources)
+	assert.Equal(t, "Test CPU", model.SystemResources.CPU.Model)
+
+	// Error case
+	updated, _ = m.Update(SystemMsg{Err: assert.AnError})
+	model = updated.(Model)
+	assert.NotNil(t, model.Errors["system"])
+}
+
 func TestTabSwitching(t *testing.T) {
 	tests := []struct {
 		name     string
@@ -190,13 +208,14 @@ func TestTabSwitching(t *testing.T) {
 		expected int
 	}{
 		{"tab forward", "tab", TabDashboard, TabTasks},
-		{"tab wrap", "tab", TabActivity, TabDashboard},
+		{"tab wrap", "tab", TabSystem, TabDashboard},
 		{"shift+tab back", "shift+tab", TabTasks, TabDashboard},
-		{"shift+tab wrap", "shift+tab", TabDashboard, TabActivity},
+		{"shift+tab wrap", "shift+tab", TabDashboard, TabSystem},
 		{"press 1", "1", TabTasks, TabDashboard},
 		{"press 2", "2", TabDashboard, TabTasks},
 		{"press 3", "3", TabDashboard, TabGit},
 		{"press 4", "4", TabDashboard, TabActivity},
+		{"press 5", "5", TabDashboard, TabSystem},
 	}
 
 	for _, tt := range tests {
@@ -334,6 +353,7 @@ func TestSseMsg(t *testing.T) {
 		{"task_update"},
 		{"process_update"},
 		{"env_update"},
+		{"system_update"},
 		{"unknown_event"},
 	}
 
@@ -362,6 +382,7 @@ func TestViewRendersTabBar(t *testing.T) {
 	assert.Contains(t, view, "Tasks")
 	assert.Contains(t, view, "Git")
 	assert.Contains(t, view, "Activity")
+	assert.Contains(t, view, "System")
 }
 
 func TestViewStatusBar(t *testing.T) {
@@ -438,6 +459,7 @@ func TestErrorStates(t *testing.T) {
 		ProcessesMsg{Err: assert.AnError},
 		EnvMsg{Err: assert.AnError},
 		ActivityMsg{Err: assert.AnError},
+		SystemMsg{Err: assert.AnError},
 	}
 
 	for _, msg := range msgs {
@@ -445,5 +467,5 @@ func TestErrorStates(t *testing.T) {
 		m = updated.(Model)
 	}
 
-	assert.Len(t, m.Errors, 5)
+	assert.Len(t, m.Errors, 6)
 }
