@@ -27,7 +27,8 @@ pub const VERSION: &str = env!("CARGO_PKG_VERSION");
 #[derive(Parser, Debug, Clone)]
 #[command(
     name = "clawmon-daemon",
-    about = "Monitoring daemon for OpenClaw AI agents"
+    about = "Monitoring daemon for OpenClaw AI agents",
+    version = VERSION
 )]
 pub struct CliArgs {
     /// Port to listen on.
@@ -191,6 +192,25 @@ mod tests {
     fn test_default_config_values() {
         assert_eq!(DEFAULT_PORT, 9876);
         assert_eq!(DEFAULT_POLL_INTERVAL_SECS, 30);
+    }
+
+    #[test]
+    fn test_version_is_valid_semver() {
+        // VERSION should be a valid semver string from Cargo.toml
+        let parts: Vec<&str> = VERSION.split('.').collect();
+        assert_eq!(parts.len(), 3, "VERSION should have 3 parts: {}", VERSION);
+        for part in &parts {
+            part.parse::<u32>()
+                .unwrap_or_else(|_| panic!("VERSION part '{}' should be numeric", part));
+        }
+    }
+
+    #[test]
+    fn test_clap_version_flag() {
+        // Verify clap recognizes --version
+        use clap::CommandFactory;
+        let cmd = CliArgs::command();
+        assert!(cmd.get_version().is_some(), "CLI should have version set");
     }
 
     #[test]

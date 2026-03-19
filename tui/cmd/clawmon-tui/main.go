@@ -14,9 +14,18 @@ import (
 	"github.com/PeterHiroshi/clawmon/tui/internal/views"
 )
 
+// version is set at build time via -ldflags.
+var version = "dev"
+
 func main() {
 	daemonURL := flag.String("daemon-url", "", "clawmon daemon API base URL")
+	showVersion := flag.Bool("version", false, "print version and exit")
 	flag.Parse()
+
+	if *showVersion {
+		fmt.Printf("clawmon-tui %s\n", version)
+		os.Exit(0)
+	}
 
 	// Resolve daemon URL: CLI flag > config file > default
 	resolvedURL := resolveDaemonURL(*daemonURL)

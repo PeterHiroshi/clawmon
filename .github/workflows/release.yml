@@ -1,0 +1,143 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  build:
+    strategy:
+      matrix:
+        include:
+          - target: x86_64-unknown-linux-gnu
+            os: ubuntu-latest
+            goos: linux
+            goarch: amd64
+            platform: linux-amd64
+          - target: aarch64-unknown-linux-gnu
+            os: ubuntu-latest
+            goos: linux
+            goarch: arm64
+            platform: linux-arm64
+            cross: true
+          - target: x86_64-apple-darwin
+            os: macos-latest
+            goos: darwin
+            goarch: amd64
+            platform: macos-amd64
+          - target: aarch64-apple-darwin
+            os: macos-latest
+            goos: darwin
+            goarch: arm64
+            platform: macos-arm64
+
+    runs-on: ${{ matrix.os }}
+    name: Build ${{ matrix.platform }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Get version from tag
+        id: version
+        run: echo "version=${GITHUB_REF_NAME}" >> "$GITHUB_OUTPUT"
+
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.target }}
+
+      - name: Rust cache
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: daemon
+
+      - name: Install cross (Linux ARM64)
+        if: matrix.cross
+        run: cargo install cross --git https://github.com/cross-rs/cross
+
+      - name: Install Linux ARM64 linker
+        if: matrix.target == 'aarch64-unknown-linux-gnu'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y gcc-aarch64-linux-gnu
+
+      - name: Build daemon
+        run: |
+          cd daemon
+          if [ "${{ matrix.cross }}" = "true" ]; then
+            cross build --release --target ${{ matrix.target }}
+          else
+            cargo build --release --target ${{ matrix.target }}
+          fi
+
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.23'
+          cache-dependency-path: tui/go.sum
+
+      - name: Build TUI
+        run: |
+          cd tui
+          VERSION="${{ steps.version.outputs.version }}"
+          GOOS=${{ matrix.goos }} GOARCH=${{ matrix.goarch }} \
+            go build -ldflags "-X main.version=${VERSION}" \
+            -o clawmon-tui ./cmd/clawmon-tui
+
+      - name: Package tarball
+        run: |
+          VERSION="${{ steps.version.outputs.version }}"
+          PLATFORM="${{ matrix.platform }}"
+          PKG_NAME="clawmon-${VERSION}-${PLATFORM}"
+          PKG_DIR="${PKG_NAME}"
+
+          mkdir -p "${PKG_DIR}"
+          cp "daemon/target/${{ matrix.target }}/release/clawmon-daemon" "${PKG_DIR}/"
+          cp "tui/clawmon-tui" "${PKG_DIR}/"
+          cp scripts/install.sh "${PKG_DIR}/"
+          cp config.example.toml "${PKG_DIR}/"
+          cp README.md "${PKG_DIR}/"
+          cp LICENSE "${PKG_DIR}/"
+
+          tar -czf "${PKG_NAME}.tar.gz" "${PKG_DIR}"
+          echo "TARBALL=${PKG_NAME}.tar.gz" >> "$GITHUB_ENV"
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.platform }}
+          path: ${{ env.TARBALL }}
+
+  release:
+    needs: build
+    runs-on: ubuntu-latest
+    name: Create Release
+
+    steps:
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+
+      - name: Generate checksums
+        run: |
+          cd artifacts
+          find . -name '*.tar.gz' -exec mv {} . \;
+          sha256sum *.tar.gz > SHA256SUMS
+          cat SHA256SUMS
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          generate_release_notes: true
+          files: |
+            artifacts/*.tar.gz
+            artifacts/SHA256SUMS
