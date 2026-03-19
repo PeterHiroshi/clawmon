@@ -28,7 +28,7 @@ jobs:
             platform: linux-arm64
             cross: true
           - target: x86_64-apple-darwin
-            os: macos-latest
+            os: macos-13
             goos: darwin
             goarch: amd64
             platform: macos-amd64
