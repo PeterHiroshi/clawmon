@@ -5,6 +5,14 @@
 # HTTP API port (default: 9876)
 port = 9876
 
+# Bind address (default: "127.0.0.1")
+# Use "0.0.0.0" for Docker mode (accessible from host)
+bind = "127.0.0.1"
+
+# Running mode: "standalone" (default) or "docker"
+# Docker mode auto-sets bind to 0.0.0.0 unless explicitly overridden
+# mode = "standalone"
+
 # How often to poll collectors (seconds, default: 30)
 poll_interval = 30
 
