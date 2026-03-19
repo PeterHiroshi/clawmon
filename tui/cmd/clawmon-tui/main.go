@@ -5,19 +5,26 @@ import (
 	"flag"
 	"fmt"
 	"os"
-)
 
-const (
-	// DefaultDaemonURL is the default daemon API base URL.
-	DefaultDaemonURL = "http://127.0.0.1:9876/api/v1"
+	tea "github.com/charmbracelet/bubbletea"
+
+	"github.com/PeterHiroshi/clawmon/tui/internal/app"
+	"github.com/PeterHiroshi/clawmon/tui/internal/client"
+	"github.com/PeterHiroshi/clawmon/tui/internal/views"
 )
 
 func main() {
-	daemonURL := flag.String("daemon-url", DefaultDaemonURL, "clawmon daemon API base URL")
+	daemonURL := flag.String("daemon-url", views.DefaultDaemonURL, "clawmon daemon API base URL")
 	flag.Parse()
 
 	fmt.Fprintf(os.Stderr, "clawmon-tui: connecting to %s\n", *daemonURL)
 
-	// TODO: Initialize client, create app model, run bubbletea program
-	fmt.Println("clawmon TUI — not yet implemented")
+	c := client.NewHTTPClient(*daemonURL)
+	m := app.NewModel(c)
+
+	p := tea.NewProgram(m, tea.WithAltScreen())
+	if _, err := p.Run(); err != nil {
+		fmt.Fprintf(os.Stderr, "error: %v\n", err)
+		os.Exit(1)
+	}
 }
