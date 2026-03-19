@@ -398,6 +398,13 @@ func (m Model) handleKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		m.DetailContent = ""
 		return m, nil
 
+	case "w":
+		if len(m.Workspaces) > 1 {
+			m.SelectedWorkspace = (m.SelectedWorkspace + 1) % len(m.Workspaces)
+			return m, m.fetchWorkspaceData()
+		}
+		return m, nil
+
 	case "r":
 		return m, tea.Batch(m.fetchHealth(), m.fetchWorkspaceData())
 
@@ -516,18 +523,23 @@ func (m Model) View() string {
 	switch m.ActiveTab {
 	case TabDashboard:
 		wsPath := ""
+		wsName := ""
 		if len(m.Workspaces) > 0 && m.SelectedWorkspace < len(m.Workspaces) {
 			wsPath = m.Workspaces[m.SelectedWorkspace].Path
+			wsName = m.Workspaces[m.SelectedWorkspace].Name
 		}
 		sections = append(sections, views.RenderDashboard(views.DashboardData{
-			WorkspacePath: wsPath,
-			DaemonOnline:  m.DaemonOnline,
-			Uptime:        m.Uptime,
-			GitStatus:     m.GitStatus,
-			Tasks:         m.Tasks,
-			Processes:     m.Processes,
-			EnvHealth:     m.EnvHealth,
-			Activity:      m.Activity,
+			WorkspacePath:  wsPath,
+			WorkspaceName:  wsName,
+			WorkspaceCount: len(m.Workspaces),
+			WorkspaceIndex: m.SelectedWorkspace,
+			DaemonOnline:   m.DaemonOnline,
+			Uptime:         m.Uptime,
+			GitStatus:      m.GitStatus,
+			Tasks:          m.Tasks,
+			Processes:      m.Processes,
+			EnvHealth:      m.EnvHealth,
+			Activity:       m.Activity,
 		}, m.Width, contentHeight))
 
 	case TabTasks:
@@ -556,6 +568,9 @@ func (m Model) renderStatusBar() string {
 	wsName := "—"
 	if len(m.Workspaces) > 0 && m.SelectedWorkspace < len(m.Workspaces) {
 		wsName = m.Workspaces[m.SelectedWorkspace].Name
+		if len(m.Workspaces) > 1 {
+			wsName = fmt.Sprintf("[%d/%d] %s", m.SelectedWorkspace+1, len(m.Workspaces), wsName)
+		}
 	}
 
 	tabName := views.TabNames[m.ActiveTab]
@@ -600,6 +615,7 @@ func (m Model) renderHelp() string {
   j/k               Navigate up/down
   Enter             Open detail view
   Esc               Close detail/help
+  w                 Cycle workspaces
   r                 Refresh data
   ?                 Toggle help
   q                 Quit

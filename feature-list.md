@@ -43,7 +43,7 @@
 | # | Feature | Status | Branch | Notes |
 |---|---------|--------|--------|-------|
 | 3.1 | README with screenshots, install guide, usage | 🔴 | — | — |
-| 3.2 | Multi-workspace support (monitor multiple agents) | 🔴 | — | — |
+| 3.2 | Multi-workspace support (monitor multiple agents) | 🟢 | feature/phase3-polish | w key cycles workspaces, [n/m] indicator, data refetch |
 | 3.3 | Error handling & graceful degradation (daemon offline, partial data) | 🟢 | feature/phase3-polish | Reconnect w/ exp backoff, stale indicators, degraded data |
 | 3.4 | Configuration file support (~/.clawmon/config.toml) | 🟢 | feature/phase3-polish | toml crate (Rust), BurntSushi/toml (Go), CLI overrides file |
 | 3.5 | Cross-platform build (Linux, macOS) | 🔴 | — | — |
