@@ -14,6 +14,7 @@ env:
 jobs:
   build:
     strategy:
+      fail-fast: false
       matrix:
         include:
           - target: x86_64-unknown-linux-gnu
@@ -26,9 +27,8 @@ jobs:
             goos: linux
             goarch: arm64
             platform: linux-arm64
-            cross: true
           - target: x86_64-apple-darwin
-            os: macos-13
+            os: macos-latest
             goos: darwin
             goarch: amd64
             platform: macos-amd64
@@ -59,24 +59,23 @@ jobs:
         with:
           workspaces: daemon
 
-      - name: Install cross (Linux ARM64)
-        if: matrix.cross
-        run: cargo install cross --git https://github.com/cross-rs/cross
-
-      - name: Install Linux ARM64 linker
+      - name: Install Linux ARM64 toolchain
         if: matrix.target == 'aarch64-unknown-linux-gnu'
         run: |
           sudo apt-get update
           sudo apt-get install -y gcc-aarch64-linux-gnu
+          mkdir -p ~/.cargo
+          cat >> ~/.cargo/config.toml << 'EOF'
+          [target.aarch64-unknown-linux-gnu]
+          linker = "aarch64-linux-gnu-gcc"
+          EOF
 
       - name: Build daemon
+        env:
+          OPENSSL_STATIC: "1"
         run: |
           cd daemon
-          if [ "${{ matrix.cross }}" = "true" ]; then
-            cross build --release --target ${{ matrix.target }}
-          else
-            cargo build --release --target ${{ matrix.target }}
-          fi
+          cargo build --release --target ${{ matrix.target }}
 
       - name: Setup Go
         uses: actions/setup-go@v5
