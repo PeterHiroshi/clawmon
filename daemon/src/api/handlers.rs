@@ -122,14 +122,20 @@ pub async fn workspace_git(
 
     match collector.collect() {
         Ok(git_status) => Ok(Json(ApiResponse::new(git_status))),
-        Err(err) => Err((
-            StatusCode::INTERNAL_SERVER_ERROR,
-            Json(serde_json::json!({
-                "error": format!("git collector failed: {}", err),
-                "timestamp": chrono::Utc::now().to_rfc3339(),
-            })),
-        )
-            .into_response()),
+        Err(err) => {
+            tracing::warn!("git collector failed for workspace {}: {}", id, err);
+            // Return degraded data instead of 500
+            Ok(Json(ApiResponse::new(crate::models::GitStatus {
+                branch: "unknown".to_string(),
+                is_clean: true,
+                uncommitted_files: vec![],
+                ahead: 0,
+                behind: 0,
+                last_commit: None,
+                last_push_time: None,
+                recent_commits: vec![],
+            })))
+        }
     }
 }
 
@@ -164,14 +170,10 @@ pub async fn workspace_processes(
 
     match collector.collect() {
         Ok(processes) => Ok(Json(ApiResponse::new(processes))),
-        Err(err) => Err((
-            StatusCode::INTERNAL_SERVER_ERROR,
-            Json(serde_json::json!({
-                "error": format!("process collector failed: {}", err),
-                "timestamp": chrono::Utc::now().to_rfc3339(),
-            })),
-        )
-            .into_response()),
+        Err(err) => {
+            tracing::warn!("process collector failed for workspace {}: {}", id, err);
+            Ok(Json(ApiResponse::new(Vec::<crate::models::ProcessInfo>::new())))
+        }
     }
 }
 
@@ -185,14 +187,13 @@ pub async fn workspace_env(
 
     match collector.collect() {
         Ok(env_health) => Ok(Json(ApiResponse::new(env_health))),
-        Err(err) => Err((
-            StatusCode::INTERNAL_SERVER_ERROR,
-            Json(serde_json::json!({
-                "error": format!("env collector failed: {}", err),
-                "timestamp": chrono::Utc::now().to_rfc3339(),
-            })),
-        )
-            .into_response()),
+        Err(err) => {
+            tracing::warn!("env collector failed for workspace {}: {}", id, err);
+            Ok(Json(ApiResponse::new(crate::models::EnvHealth {
+                tools: vec![],
+                hooks: vec![],
+            })))
+        }
     }
 }
 
