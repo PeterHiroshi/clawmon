@@ -118,6 +118,64 @@ else
 fi
 unset OPENCLAW_WORKSPACE
 
+# --- Test install.sh --tui-only flag ---
+
+echo ""
+echo "=== Testing install.sh --tui-only flag ==="
+
+# Re-source to get parse_install_args
+export CLAWMON_SOURCED=1
+source "${SCRIPT_DIR}/install.sh"
+
+# Test default TUI_ONLY is false
+TUI_ONLY=false
+parse_install_args
+if [ "${TUI_ONLY}" = "false" ]; then
+    test_pass "parse_install_args default TUI_ONLY=false"
+else
+    test_fail "parse_install_args default TUI_ONLY should be false: ${TUI_ONLY}"
+fi
+
+# Test --tui-only flag sets TUI_ONLY=true
+TUI_ONLY=false
+parse_install_args --tui-only
+if [ "${TUI_ONLY}" = "true" ]; then
+    test_pass "parse_install_args --tui-only sets TUI_ONLY=true"
+else
+    test_fail "parse_install_args --tui-only failed: ${TUI_ONLY}"
+fi
+
+# Test --tui-only with other args
+TUI_ONLY=false
+parse_install_args --tui-only --some-other-flag
+if [ "${TUI_ONLY}" = "true" ]; then
+    test_pass "parse_install_args --tui-only ignores unknown flags"
+else
+    test_fail "parse_install_args --tui-only with extra args failed: ${TUI_ONLY}"
+fi
+
+# --- Test Docker integration helpers ---
+
+echo ""
+echo "=== Testing Docker integration helpers ==="
+
+# Re-source integrate script
+source "${SCRIPT_DIR}/openclaw-integrate.sh"
+
+# Test check_port_mapping function exists (can't test without Docker)
+if declare -f check_port_mapping >/dev/null 2>&1; then
+    test_pass "check_port_mapping function exists"
+else
+    test_fail "check_port_mapping function not found"
+fi
+
+# Test detect_container_workspace function exists
+if declare -f detect_container_workspace >/dev/null 2>&1; then
+    test_pass "detect_container_workspace function exists"
+else
+    test_fail "detect_container_workspace function not found"
+fi
+
 # --- YAML validation ---
 
 echo ""

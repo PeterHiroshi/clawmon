@@ -98,10 +98,14 @@ fn find_workspace(state: &AppState, id: &str) -> std::result::Result<WorkspaceIn
 /// GET /api/v1/health
 pub async fn health(State(state): State<AppState>) -> Json<ApiResponse<HealthResponse>> {
     let uptime = state.start_time.elapsed().as_secs();
+    let bind_address = format!("{}:{}", state.config.bind, state.config.port);
     Json(ApiResponse::new(HealthResponse {
         status: "ok".to_string(),
-        uptime_seconds: uptime,
         version: VERSION.to_string(),
+        uptime_seconds: uptime,
+        bind_address,
+        workspaces_count: state.workspaces.len(),
+        mode: state.config.mode.as_str().to_string(),
     }))
 }
 
@@ -332,6 +336,8 @@ mod tests {
     fn test_config() -> Config {
         Config {
             port: 0,
+            bind: "127.0.0.1".to_string(),
+            mode: crate::config::DaemonMode::Standalone,
             workspace_path: PathBuf::from("/tmp/test"),
             poll_interval: std::time::Duration::from_secs(30),
             project_dirs: vec![],

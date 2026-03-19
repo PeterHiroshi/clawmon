@@ -19,6 +19,8 @@ async fn start_daemon(project_dirs: Vec<PathBuf>) -> (String, tokio::task::JoinH
     let port = free_port();
     let config = Config {
         port,
+        bind: "127.0.0.1".to_string(),
+        mode: clawmon_daemon::config::DaemonMode::Standalone,
         workspace_path: PathBuf::from("/tmp/e2e-test"),
         poll_interval: Duration::from_secs(300),
         project_dirs,
@@ -74,7 +76,7 @@ async fn e2e_health_check() {
     assert_eq!(resp.status(), 200);
     let json: serde_json::Value = resp.json().await.unwrap();
     assert_eq!(json["data"]["status"], "ok");
-    assert_eq!(json["data"]["version"], "0.1.0");
+    assert_eq!(json["data"]["version"], env!("CARGO_PKG_VERSION"));
     assert!(json["data"]["uptime_seconds"].as_u64().is_some());
     assert!(json["timestamp"].is_string());
 

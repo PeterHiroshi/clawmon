@@ -1,5 +1,9 @@
 # clawmon
 
+[![Release](https://img.shields.io/github/v/release/PeterHiroshi/clawmon)](https://github.com/PeterHiroshi/clawmon/releases)
+[![CI](https://img.shields.io/github/actions/workflow/status/PeterHiroshi/clawmon/ci.yml?branch=develop)](https://github.com/PeterHiroshi/clawmon/actions)
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
+
 Terminal-based monitoring dashboard for [OpenClaw](https://openclaw.ai) AI agents. Track workspace sync, task dispatch, process health, and activity timelines — all from your terminal.
 
 ## Why clawmon?
@@ -104,6 +108,20 @@ make run-tui
 
 The TUI connects to the daemon at `http://127.0.0.1:9876` by default and begins displaying real-time data.
 
+### Docker Mode (v0.2.0+)
+
+For OpenClaw running inside Docker containers:
+
+```bash
+# Daemon inside container — binds to 0.0.0.0 for external TUI access
+clawmon-daemon --mode docker
+
+# TUI on host — connects to container's exposed port
+clawmon-tui --daemon-url http://localhost:9876/api/v1
+```
+
+Use `--tui-only` with the install script to set up just the TUI on your host machine.
+
 ## Configuration
 
 ### CLI Flags
@@ -113,6 +131,8 @@ The TUI connects to the daemon at `http://127.0.0.1:9876` by default and begins 
 | Flag | Default | Description |
 |------|---------|-------------|
 | `--port` | `9876` | HTTP API port |
+| `--bind` | `127.0.0.1` | Bind address (`0.0.0.0` for Docker) |
+| `--mode` | `standalone` | Run mode: `standalone` or `docker` |
 | `--workspace` | auto-detect | Workspace root path |
 | `--poll-interval` | `30` | Poll interval in seconds |
 | `--project-dirs` | auto-scan | Additional project directories (comma-separated) |

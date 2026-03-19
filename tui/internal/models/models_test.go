@@ -10,14 +10,29 @@ import (
 )
 
 func TestHealthResponseDeserialization(t *testing.T) {
-	raw := `{"data":{"status":"ok","uptime_seconds":42,"version":"0.1.0"},"timestamp":"2026-03-18T19:00:00Z"}`
+	raw := `{"data":{"status":"ok","version":"0.1.0","uptime_seconds":42,"bind_address":"127.0.0.1:9876","workspaces_count":2,"mode":"standalone"},"timestamp":"2026-03-18T19:00:00Z"}`
 	var resp ApiResponse[HealthResponse]
 	err := json.Unmarshal([]byte(raw), &resp)
 	require.NoError(t, err)
 	assert.Equal(t, "ok", resp.Data.Status)
 	assert.Equal(t, uint64(42), resp.Data.UptimeSeconds)
 	assert.Equal(t, "0.1.0", resp.Data.Version)
+	assert.Equal(t, "127.0.0.1:9876", resp.Data.BindAddress)
+	assert.Equal(t, 2, resp.Data.WorkspacesCount)
+	assert.Equal(t, "standalone", resp.Data.Mode)
 	assert.Equal(t, "2026-03-18T19:00:00Z", resp.Timestamp)
+}
+
+func TestHealthResponseBackwardsCompatible(t *testing.T) {
+	// Old format without new fields should still deserialize (zero values)
+	raw := `{"data":{"status":"ok","uptime_seconds":42,"version":"0.1.0"},"timestamp":"2026-03-18T19:00:00Z"}`
+	var resp ApiResponse[HealthResponse]
+	err := json.Unmarshal([]byte(raw), &resp)
+	require.NoError(t, err)
+	assert.Equal(t, "ok", resp.Data.Status)
+	assert.Equal(t, "", resp.Data.BindAddress)
+	assert.Equal(t, 0, resp.Data.WorkspacesCount)
+	assert.Equal(t, "", resp.Data.Mode)
 }
 
 func TestWorkspaceInfoDeserialization(t *testing.T) {

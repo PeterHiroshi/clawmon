@@ -22,8 +22,11 @@ impl<T: Serialize> ApiResponse<T> {
 #[derive(Debug, Serialize, Deserialize)]
 pub struct HealthResponse {
     pub status: String,
-    pub uptime_seconds: u64,
     pub version: String,
+    pub uptime_seconds: u64,
+    pub bind_address: String,
+    pub workspaces_count: usize,
+    pub mode: String,
 }
 
 /// Workspace summary info.
@@ -235,12 +238,18 @@ mod tests {
     fn test_api_response_serialization() {
         let response = ApiResponse::new(HealthResponse {
             status: "ok".to_string(),
-            uptime_seconds: 42,
             version: "0.1.0".to_string(),
+            uptime_seconds: 42,
+            bind_address: "127.0.0.1:9876".to_string(),
+            workspaces_count: 2,
+            mode: "standalone".to_string(),
         });
         let json = serde_json::to_string(&response).unwrap();
         assert!(json.contains("\"status\":\"ok\""));
         assert!(json.contains("\"uptime_seconds\":42"));
+        assert!(json.contains("\"bind_address\":\"127.0.0.1:9876\""));
+        assert!(json.contains("\"workspaces_count\":2"));
+        assert!(json.contains("\"mode\":\"standalone\""));
         assert!(json.contains("\"timestamp\""));
     }
 
