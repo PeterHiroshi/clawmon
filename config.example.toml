@@ -1,0 +1,29 @@
+# clawmon configuration
+# Copy to ~/.clawmon/config.toml and adjust as needed
+
+[daemon]
+# HTTP API port (default: 9876)
+port = 9876
+
+# How often to poll collectors (seconds, default: 30)
+poll_interval = 30
+
+[daemon.workspaces]
+# List of workspace paths to monitor
+# OpenClaw workspaces are auto-detected if not specified
+paths = [
+    "~/.openclaw/workspace-main",
+    # Add more workspaces here:
+    # "~/other-agent-workspace",
+]
+
+[tui]
+# Daemon API URL (default: http://127.0.0.1:9876)
+daemon_url = "http://127.0.0.1:9876"
+
+# Dashboard refresh interval (seconds, default: 5)
+refresh_interval = 5
+
+# Color theme (default: dark)
+# Options: dark
+theme = "dark"
