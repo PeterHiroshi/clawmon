@@ -51,6 +51,13 @@ type Model struct {
 	ShowDetail   bool
 	DetailContent string
 
+	// Stale data tracking
+	StaleData        map[string]bool
+	LastSuccessful   map[string]time.Time
+
+	// Reconnection state
+	Reconnect *client.ReconnectState
+
 	// Per-tab selection indices
 	SelectedTask     int
 	SelectedCommit   int
@@ -63,10 +70,13 @@ type Model struct {
 // NewModel creates a new app model with the given daemon client.
 func NewModel(c client.DaemonClient) Model {
 	return Model{
-		ActiveTab: TabDashboard,
-		Loading:   map[string]bool{"init": true},
-		Errors:    make(map[string]error),
-		Client:    c,
+		ActiveTab:      TabDashboard,
+		Loading:        map[string]bool{"init": true},
+		Errors:         make(map[string]error),
+		StaleData:      make(map[string]bool),
+		LastSuccessful: make(map[string]time.Time),
+		Reconnect:      client.NewReconnectState(),
+		Client:         c,
 	}
 }
 
@@ -224,11 +234,27 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case HealthMsg:
 		if msg.Err != nil {
 			m.DaemonOnline = false
+			m.Reconnect.MarkDisconnected()
 			m.Errors["health"] = msg.Err
+			// Mark all data as stale when daemon goes offline
+			for _, key := range []string{"git", "tasks", "processes", "env", "activity"} {
+				if _, ok := m.LastSuccessful[key]; ok {
+					m.StaleData[key] = true
+				}
+			}
 		} else {
+			wasOffline := !m.DaemonOnline
 			m.DaemonOnline = true
+			m.Reconnect.MarkConnected()
 			m.Uptime = msg.Response.UptimeSeconds
 			delete(m.Errors, "health")
+			// Clear stale flags on reconnection
+			if wasOffline {
+				for key := range m.StaleData {
+					delete(m.StaleData, key)
+				}
+				return m, m.fetchWorkspaceData()
+			}
 		}
 		return m, nil
 
@@ -249,6 +275,8 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		} else {
 			m.GitStatus = msg.Status
 			delete(m.Errors, "git")
+			delete(m.StaleData, "git")
+			m.LastSuccessful["git"] = time.Now()
 		}
 		m.LastRefresh = time.Now()
 		return m, nil
@@ -259,6 +287,8 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		} else {
 			m.Tasks = msg.Tasks
 			delete(m.Errors, "tasks")
+			delete(m.StaleData, "tasks")
+			m.LastSuccessful["tasks"] = time.Now()
 		}
 		return m, nil
 
@@ -268,6 +298,8 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		} else {
 			m.Processes = msg.Processes
 			delete(m.Errors, "processes")
+			delete(m.StaleData, "processes")
+			m.LastSuccessful["processes"] = time.Now()
 		}
 		return m, nil
 
@@ -277,6 +309,8 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		} else {
 			m.EnvHealth = msg.Health
 			delete(m.Errors, "env")
+			delete(m.StaleData, "env")
+			m.LastSuccessful["env"] = time.Now()
 		}
 		return m, nil
 
@@ -286,6 +320,8 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		} else {
 			m.Activity = msg.Events
 			delete(m.Errors, "activity")
+			delete(m.StaleData, "activity")
+			m.LastSuccessful["activity"] = time.Now()
 		}
 		return m, nil
 
@@ -360,6 +396,13 @@ func (m Model) handleKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	case "esc":
 		m.ShowDetail = false
 		m.DetailContent = ""
+		return m, nil
+
+	case "w":
+		if len(m.Workspaces) > 1 {
+			m.SelectedWorkspace = (m.SelectedWorkspace + 1) % len(m.Workspaces)
+			return m, m.fetchWorkspaceData()
+		}
 		return m, nil
 
 	case "r":
@@ -480,18 +523,23 @@ func (m Model) View() string {
 	switch m.ActiveTab {
 	case TabDashboard:
 		wsPath := ""
+		wsName := ""
 		if len(m.Workspaces) > 0 && m.SelectedWorkspace < len(m.Workspaces) {
 			wsPath = m.Workspaces[m.SelectedWorkspace].Path
+			wsName = m.Workspaces[m.SelectedWorkspace].Name
 		}
 		sections = append(sections, views.RenderDashboard(views.DashboardData{
-			WorkspacePath: wsPath,
-			DaemonOnline:  m.DaemonOnline,
-			Uptime:        m.Uptime,
-			GitStatus:     m.GitStatus,
-			Tasks:         m.Tasks,
-			Processes:     m.Processes,
-			EnvHealth:     m.EnvHealth,
-			Activity:      m.Activity,
+			WorkspacePath:  wsPath,
+			WorkspaceName:  wsName,
+			WorkspaceCount: len(m.Workspaces),
+			WorkspaceIndex: m.SelectedWorkspace,
+			DaemonOnline:   m.DaemonOnline,
+			Uptime:         m.Uptime,
+			GitStatus:      m.GitStatus,
+			Tasks:          m.Tasks,
+			Processes:      m.Processes,
+			EnvHealth:      m.EnvHealth,
+			Activity:       m.Activity,
 		}, m.Width, contentHeight))
 
 	case TabTasks:
@@ -520,11 +568,24 @@ func (m Model) renderStatusBar() string {
 	wsName := "—"
 	if len(m.Workspaces) > 0 && m.SelectedWorkspace < len(m.Workspaces) {
 		wsName = m.Workspaces[m.SelectedWorkspace].Name
+		if len(m.Workspaces) > 1 {
+			wsName = fmt.Sprintf("[%d/%d] %s", m.SelectedWorkspace+1, len(m.Workspaces), wsName)
+		}
 	}
 
 	tabName := views.TabNames[m.ActiveTab]
 
-	left := fmt.Sprintf(" %s daemon  %s  refreshed: %s", dot, wsName, refreshStr)
+	// Show reconnection status or stale data indicator
+	statusExtra := ""
+	if !m.DaemonOnline {
+		if msg := m.Reconnect.RetryMessage(); msg != "" {
+			statusExtra = "  " + msg
+		}
+	} else if m.hasStaleData() {
+		statusExtra = "  [stale]"
+	}
+
+	left := fmt.Sprintf(" %s daemon  %s  refreshed: %s%s", dot, wsName, refreshStr, statusExtra)
 	right := fmt.Sprintf("%s  ? help  q quit ", tabName)
 
 	gap := m.Width - lipgloss.Width(left) - lipgloss.Width(right)
@@ -533,6 +594,16 @@ func (m Model) renderStatusBar() string {
 	}
 
 	return views.StatusBarStyle.Width(m.Width).Render(left + strings.Repeat(" ", gap) + right)
+}
+
+// hasStaleData returns true if any data source is marked as stale.
+func (m Model) hasStaleData() bool {
+	for _, stale := range m.StaleData {
+		if stale {
+			return true
+		}
+	}
+	return false
 }
 
 func (m Model) renderHelp() string {
@@ -544,6 +615,7 @@ func (m Model) renderHelp() string {
   j/k               Navigate up/down
   Enter             Open detail view
   Esc               Close detail/help
+  w                 Cycle workspaces
   r                 Refresh data
   ?                 Toggle help
   q                 Quit

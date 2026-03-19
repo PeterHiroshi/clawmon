@@ -11,14 +11,17 @@ import (
 
 // DashboardData aggregates all data needed for the dashboard overview.
 type DashboardData struct {
-	WorkspacePath string
-	DaemonOnline  bool
-	Uptime        uint64
-	GitStatus     *models.GitStatus
-	Tasks         []models.TaskInfo
-	Processes     []models.ProcessInfo
-	EnvHealth     *models.EnvHealth
-	Activity      []models.ActivityEvent
+	WorkspacePath  string
+	WorkspaceName  string
+	WorkspaceCount int
+	WorkspaceIndex int
+	DaemonOnline   bool
+	Uptime         uint64
+	GitStatus      *models.GitStatus
+	Tasks          []models.TaskInfo
+	Processes      []models.ProcessInfo
+	EnvHealth      *models.EnvHealth
+	Activity       []models.ActivityEvent
 }
 
 // RenderDashboard renders the dashboard overview tab.
@@ -62,7 +65,11 @@ func renderDashboardHeader(data DashboardData, width int) string {
 	}
 	uptimeStr := FormatDuration(data.Uptime)
 
-	left := TitleStyle.Render("clawmon") + "  " + DimStyle.Render(data.WorkspacePath)
+	wsLabel := data.WorkspacePath
+	if data.WorkspaceCount > 1 {
+		wsLabel = fmt.Sprintf("[%d/%d] %s", data.WorkspaceIndex+1, data.WorkspaceCount, data.WorkspaceName)
+	}
+	left := TitleStyle.Render("clawmon") + "  " + DimStyle.Render(wsLabel)
 	right := fmt.Sprintf("%s %s  uptime: %s", dot, status, uptimeStr)
 
 	gap := width - lipgloss.Width(left) - lipgloss.Width(right)
