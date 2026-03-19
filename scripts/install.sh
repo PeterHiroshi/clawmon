@@ -1,8 +1,10 @@
 #!/usr/bin/env bash
 # clawmon installer
 # Usage: curl -fsSL https://raw.githubusercontent.com/PeterHiroshi/clawmon/main/scripts/install.sh | bash
+#        curl -fsSL .../install.sh | bash -s -- --tui-only
 #
 # Installs clawmon-daemon and clawmon-tui from the latest GitHub release.
+# With --tui-only, only installs clawmon-tui (for host when daemon runs in Docker).
 # Supports: linux/darwin, amd64/arm64
 
 set -euo pipefail
@@ -11,6 +13,7 @@ REPO="PeterHiroshi/clawmon"
 GITHUB_API="https://api.github.com"
 CONFIG_DIR="${HOME}/.clawmon"
 CONFIG_FILE="${CONFIG_DIR}/config.toml"
+TUI_ONLY=false
 
 # --- Color output ---
 
@@ -131,10 +134,37 @@ get_latest_version() {
     echo "${response}" | grep '"tag_name"' | head -1 | sed 's/.*"tag_name"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/'
 }
 
+# --- Argument parsing ---
+
+parse_install_args() {
+    while [ $# -gt 0 ]; do
+        case "$1" in
+            --tui-only)
+                TUI_ONLY=true
+                shift
+                ;;
+            -h|--help)
+                printf "Usage: install.sh [--tui-only]\n"
+                printf "  --tui-only  Only install clawmon-tui (for host when daemon runs in Docker)\n"
+                exit 0
+                ;;
+            *)
+                shift
+                ;;
+        esac
+    done
+}
+
 # --- Main ---
 
 main() {
-    printf "\n${BOLD}clawmon installer${RESET}\n\n"
+    parse_install_args "$@"
+
+    if [ "${TUI_ONLY}" = "true" ]; then
+        printf "\n${BOLD}clawmon installer (TUI only)${RESET}\n\n"
+    else
+        printf "\n${BOLD}clawmon installer${RESET}\n\n"
+    fi
 
     local os arch install_dir version tarball_name download_url tmpdir
     os=$(detect_os)
@@ -184,9 +214,17 @@ main() {
         exit 1
     fi
 
+    # Determine which binaries to install
+    local binaries
+    if [ "${TUI_ONLY}" = "true" ]; then
+        binaries="clawmon-tui"
+    else
+        binaries="clawmon-daemon clawmon-tui"
+    fi
+
     # Backup existing installation
     ensure_install_dir "${install_dir}"
-    for binary in clawmon-daemon clawmon-tui; do
+    for binary in ${binaries}; do
         if [ -f "${install_dir}/${binary}" ]; then
             warn "Backing up existing ${binary} to ${binary}.bak"
             mv "${install_dir}/${binary}" "${install_dir}/${binary}.bak"
@@ -194,48 +232,69 @@ main() {
     done
 
     # Install binaries
-    cp "${extract_dir}/clawmon-daemon" "${install_dir}/clawmon-daemon"
-    cp "${extract_dir}/clawmon-tui" "${install_dir}/clawmon-tui"
-    chmod +x "${install_dir}/clawmon-daemon" "${install_dir}/clawmon-tui"
+    for binary in ${binaries}; do
+        cp "${extract_dir}/${binary}" "${install_dir}/${binary}"
+        chmod +x "${install_dir}/${binary}"
+    done
     ok "Installed binaries to ${install_dir}"
 
     # Verify
-    if "${install_dir}/clawmon-daemon" --version >/dev/null 2>&1 && \
-       "${install_dir}/clawmon-tui" -version >/dev/null 2>&1; then
+    local verified=true
+    if [ "${TUI_ONLY}" = "true" ]; then
+        if ! "${install_dir}/clawmon-tui" -version >/dev/null 2>&1; then
+            verified=false
+        fi
+    else
+        if ! "${install_dir}/clawmon-daemon" --version >/dev/null 2>&1 || \
+           ! "${install_dir}/clawmon-tui" -version >/dev/null 2>&1; then
+            verified=false
+        fi
+    fi
+
+    if [ "${verified}" = "true" ]; then
         ok "Binaries verified"
     else
         warn "Could not verify binaries — they may not run on this platform"
     fi
 
-    # Create default config
-    if [ ! -f "${CONFIG_FILE}" ]; then
-        mkdir -p "${CONFIG_DIR}"
-        if [ -f "${extract_dir}/config.example.toml" ]; then
-            cp "${extract_dir}/config.example.toml" "${CONFIG_FILE}"
-            ok "Created default config at ${CONFIG_FILE}"
+    # Create default config (skip for TUI-only — daemon manages config)
+    if [ "${TUI_ONLY}" != "true" ]; then
+        if [ ! -f "${CONFIG_FILE}" ]; then
+            mkdir -p "${CONFIG_DIR}"
+            if [ -f "${extract_dir}/config.example.toml" ]; then
+                cp "${extract_dir}/config.example.toml" "${CONFIG_FILE}"
+                ok "Created default config at ${CONFIG_FILE}"
+            fi
+        else
+            info "Config already exists at ${CONFIG_FILE} (not overwriting)"
         fi
-    else
-        info "Config already exists at ${CONFIG_FILE} (not overwriting)"
     fi
 
     # Check PATH
     ensure_in_path "${install_dir}"
 
     # Print quick start
-    printf "\n${GREEN}${BOLD}Installation complete!${RESET}\n\n"
-    printf "Quick start:\n"
-    printf "  ${BOLD}1.${RESET} Start the daemon:  ${BOLD}clawmon-daemon${RESET}\n"
-    printf "  ${BOLD}2.${RESET} Open the TUI:      ${BOLD}clawmon-tui${RESET}\n"
-    printf "\n"
-    printf "Config: ${CONFIG_FILE}\n"
-    printf "Docs:   https://github.com/${REPO}\n\n"
+    if [ "${TUI_ONLY}" = "true" ]; then
+        printf "\n${GREEN}${BOLD}TUI installation complete!${RESET}\n\n"
+        printf "Connect to remote daemon:\n"
+        printf "  ${BOLD}clawmon-tui --daemon-url http://<host>:9876${RESET}\n\n"
+        printf "Docs: https://github.com/${REPO}\n\n"
+    else
+        printf "\n${GREEN}${BOLD}Installation complete!${RESET}\n\n"
+        printf "Quick start:\n"
+        printf "  ${BOLD}1.${RESET} Start the daemon:  ${BOLD}clawmon-daemon${RESET}\n"
+        printf "  ${BOLD}2.${RESET} Open the TUI:      ${BOLD}clawmon-tui${RESET}\n"
+        printf "\n"
+        printf "Config: ${CONFIG_FILE}\n"
+        printf "Docs:   https://github.com/${REPO}\n\n"
 
-    # Offer systemd service
-    if command -v systemctl >/dev/null 2>&1 && [ "$(id -u)" -ne 0 ]; then
-        printf "Would you like to create a systemd user service for auto-start? [y/N] "
-        read -r answer </dev/tty 2>/dev/null || answer="n"
-        if [ "${answer}" = "y" ] || [ "${answer}" = "Y" ]; then
-            create_systemd_service "${install_dir}"
+        # Offer systemd service
+        if command -v systemctl >/dev/null 2>&1 && [ "$(id -u)" -ne 0 ]; then
+            printf "Would you like to create a systemd user service for auto-start? [y/N] "
+            read -r answer </dev/tty 2>/dev/null || answer="n"
+            if [ "${answer}" = "y" ] || [ "${answer}" = "Y" ]; then
+                create_systemd_service "${install_dir}"
+            fi
         fi
     fi
 }
