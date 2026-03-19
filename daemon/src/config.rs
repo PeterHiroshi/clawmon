@@ -27,7 +27,8 @@ pub const VERSION: &str = env!("CARGO_PKG_VERSION");
 #[derive(Parser, Debug, Clone)]
 #[command(
     name = "clawmon-daemon",
-    about = "Monitoring daemon for OpenClaw AI agents"
+    about = "Monitoring daemon for OpenClaw AI agents",
+    version = VERSION
 )]
 pub struct CliArgs {
     /// Port to listen on.

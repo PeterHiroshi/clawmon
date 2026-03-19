@@ -1,5 +1,9 @@
 .PHONY: build build-daemon build-tui test test-daemon test-tui test-e2e lint run-daemon run-tui clean build-linux build-macos
 
+# Version (read from Cargo.toml as single source of truth)
+VERSION ?= $(shell grep '^version' daemon/Cargo.toml | head -1 | sed 's/.*"\(.*\)"/\1/')
+GO_LDFLAGS = -ldflags "-X main.version=$(VERSION)"
+
 # Build
 build: build-daemon build-tui
 
@@ -7,7 +11,7 @@ build-daemon:
 	cd daemon && cargo build --release
 
 build-tui:
-	cd tui && go build -o clawmon-tui ./cmd/clawmon-tui
+	cd tui && go build $(GO_LDFLAGS) -o clawmon-tui ./cmd/clawmon-tui
 
 # Cross-platform builds
 build-linux: build-linux-daemon build-linux-tui
@@ -16,7 +20,7 @@ build-linux-daemon:
 	cd daemon && cargo build --release --target x86_64-unknown-linux-gnu
 
 build-linux-tui:
-	cd tui && GOOS=linux GOARCH=amd64 go build -o clawmon-tui-linux ./cmd/clawmon-tui
+	cd tui && GOOS=linux GOARCH=amd64 go build $(GO_LDFLAGS) -o clawmon-tui-linux ./cmd/clawmon-tui
 
 build-macos: build-macos-daemon build-macos-tui
 
@@ -24,7 +28,7 @@ build-macos-daemon:
 	cd daemon && cargo build --release --target x86_64-apple-darwin
 
 build-macos-tui:
-	cd tui && GOOS=darwin GOARCH=amd64 go build -o clawmon-tui-macos ./cmd/clawmon-tui
+	cd tui && GOOS=darwin GOARCH=amd64 go build $(GO_LDFLAGS) -o clawmon-tui-macos ./cmd/clawmon-tui
 
 # Test
 test: test-daemon test-tui
