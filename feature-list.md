@@ -29,12 +29,12 @@
 | 2.1 | Project scaffolding (go.mod, dir structure, Makefile integration) | 🟢 | feature/phase2-tui | go.mod, models, main.go stub, 10 tests |
 | 2.2 | Daemon HTTP client (all endpoints, SSE subscription) | 🟢 | feature/phase2-tui | 14 tests (10 REST + 4 SSE) |
 | 2.3 | App shell (tabs, navigation, key bindings, status bar) | 🟢 | feature/phase2-tui | Bubble Tea model, Update, View, tab bar, status bar, help overlay |
-| 2.4 | Dashboard tab (overview: workspace count, task summary, git summary) | 🔴 | — | — |
-| 2.5 | Tasks tab (table: task name, status, duration, model, teams mode) | 🔴 | — | — |
-| 2.6 | Git tab (sync status, recent commits, ahead/behind, dirty files) | 🔴 | — | — |
-| 2.7 | Activity tab (timeline of recent events, color-coded by type) | 🔴 | — | — |
-| 2.8 | Real-time updates (SSE → live refresh) | 🔴 | — | — |
-| 2.9 | Detail views (Enter on task/commit for full info) | 🔴 | — | — |
+| 2.4 | Dashboard tab (overview: workspace count, task summary, git summary) | 🟢 | feature/phase2-tui | 2x2 card grid, quick activity feed |
+| 2.5 | Tasks tab (table: task name, status, duration, model, teams mode) | 🟢 | feature/phase2-tui | Color-coded table, detail view |
+| 2.6 | Git tab (sync status, recent commits, ahead/behind, dirty files) | 🟢 | feature/phase2-tui | Branch badges, commit table, dirty file list |
+| 2.7 | Activity tab (timeline of recent events, color-coded by type) | 🟢 | feature/phase2-tui | Vertical timeline with type icons |
+| 2.8 | Real-time updates (SSE → live refresh) | 🟢 | feature/phase2-tui | SSE subscription, targeted refresh |
+| 2.9 | Detail views (Enter on task/commit for full info) | 🟢 | feature/phase2-tui | Task detail, commit detail overlays |
 | 2.10 | Integration tests (client ↔ mock daemon) | 🔴 | — | — |
 | 2.11 | E2E tests (daemon + TUI interaction) | 🔴 | — | — |
 
