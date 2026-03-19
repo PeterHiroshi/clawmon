@@ -82,4 +82,4 @@
 | 6.5 | Container restart bootstrap hook | 🟢 | feature/docker-integration | clawmon-bootstrap.sh auto-start |
 | 6.6 | TUI-only install option (--tui-only) | 🟢 | feature/docker-integration | Skip daemon, print remote connect instructions |
 | 6.7 | Health endpoint enhancement | 🟢 | feature/docker-integration | bind_address, workspaces_count, mode fields |
-| 6.8 | Tests (bind, docker mode, install --tui-only) | 🔴 | — | — |
+| 6.8 | Tests (bind, docker mode, install --tui-only) | 🟢 | feature/docker-integration | 100 Rust + Go + 20 script tests |
