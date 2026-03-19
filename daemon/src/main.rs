@@ -7,7 +7,7 @@ use tracing::{error, info};
 
 use clawmon_daemon::api::handlers::AppState;
 use clawmon_daemon::api::routes::build_router;
-use clawmon_daemon::config::{CliArgs, Config, VERSION};
+use clawmon_daemon::config::{CliArgs, Config, DaemonMode, VERSION};
 use clawmon_daemon::models::SseEvent;
 use clawmon_daemon::watcher::{self, FileWatcher};
 
@@ -25,6 +25,9 @@ async fn main() -> anyhow::Result<()> {
     let config = Config::from_args(&args)?;
 
     info!("clawmon-daemon v{} starting", VERSION);
+    if config.mode == DaemonMode::Docker {
+        info!("running in Docker mode, accessible externally");
+    }
     info!("workspace: {}", config.workspace_path.display());
     info!("monitoring {} project(s)", config.project_dirs.len());
 
@@ -77,7 +80,8 @@ async fn main() -> anyhow::Result<()> {
     });
 
     let router = build_router(state);
-    let addr = SocketAddr::from(([127, 0, 0, 1], port));
+    let bind_addr: std::net::IpAddr = config.bind.parse()?;
+    let addr = SocketAddr::from((bind_addr, port));
     let listener = TcpListener::bind(addr).await?;
     info!("listening on http://{}", addr);
 

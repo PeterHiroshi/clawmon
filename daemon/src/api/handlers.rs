@@ -332,6 +332,8 @@ mod tests {
     fn test_config() -> Config {
         Config {
             port: 0,
+            bind: "127.0.0.1".to_string(),
+            mode: crate::config::DaemonMode::Standalone,
             workspace_path: PathBuf::from("/tmp/test"),
             poll_interval: std::time::Duration::from_secs(30),
             project_dirs: vec![],

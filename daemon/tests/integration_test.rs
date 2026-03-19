@@ -14,6 +14,8 @@ use tower::ServiceExt;
 fn test_config_with_projects(project_dirs: Vec<PathBuf>) -> Config {
     Config {
         port: 0,
+        bind: "127.0.0.1".to_string(),
+        mode: clawmon_daemon::config::DaemonMode::Standalone,
         workspace_path: PathBuf::from("/tmp/test-workspace"),
         poll_interval: Duration::from_secs(30),
         project_dirs,
