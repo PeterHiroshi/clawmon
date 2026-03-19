@@ -561,17 +561,18 @@ func (m Model) View() string {
 			wsName = m.Workspaces[m.SelectedWorkspace].Name
 		}
 		sections = append(sections, views.RenderDashboard(views.DashboardData{
-			WorkspacePath:  wsPath,
-			WorkspaceName:  wsName,
-			WorkspaceCount: len(m.Workspaces),
-			WorkspaceIndex: m.SelectedWorkspace,
-			DaemonOnline:   m.DaemonOnline,
-			Uptime:         m.Uptime,
-			GitStatus:      m.GitStatus,
-			Tasks:          m.Tasks,
-			Processes:      m.Processes,
-			EnvHealth:      m.EnvHealth,
-			Activity:       m.Activity,
+			WorkspacePath:   wsPath,
+			WorkspaceName:   wsName,
+			WorkspaceCount:  len(m.Workspaces),
+			WorkspaceIndex:  m.SelectedWorkspace,
+			DaemonOnline:    m.DaemonOnline,
+			Uptime:          m.Uptime,
+			GitStatus:       m.GitStatus,
+			Tasks:           m.Tasks,
+			Processes:       m.Processes,
+			EnvHealth:       m.EnvHealth,
+			Activity:        m.Activity,
+			SystemResources: m.SystemResources,
 		}, m.Width, contentHeight))
 
 	case TabTasks:
